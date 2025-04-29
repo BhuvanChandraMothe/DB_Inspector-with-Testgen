@@ -34,7 +34,7 @@ LOG_FILE_MAX_QTY: str = os.getenv("TESTGEN_LOG_FILE_MAX_QTY", "90")
 Maximum log files to keep, defaults to 90 days (one file per day).
 """
 
-APP_ENCRYPTION_SALT: str = os.getenv("TG_DECRYPT_SALT", "testgen")
+APP_ENCRYPTION_SALT: str = os.getenv("TG_DECRYPT_SALT", "TestGenSaltValue")
 """
 Salt used to encrypt and decrypt user secrets. Only allows ascii
 characters.
@@ -44,7 +44,7 @@ A minimun length of 16 characters is recommended.
 from env variable: `TG_DECRYPT_SALT`
 """
 
-APP_ENCRYPTION_SECRET: str = os.getenv("TG_DECRYPT_PASSWORD", "testgen")
+APP_ENCRYPTION_SECRET: str = os.getenv("TG_DECRYPT_PASSWORD", "TestGenPrototype123")
 """
 Secret passcode used in combination with `APP_ENCRYPTION_SALT` to
 encrypt and decrypt user secrets. Only allows ascii characters.

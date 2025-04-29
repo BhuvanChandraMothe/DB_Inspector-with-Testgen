@@ -205,7 +205,7 @@ def _GetDBCredentials(strCredentialSet):
 
 
 def get_flavor_service(flavor):
-    module_path = f"testgen.common.database.flavor.{flavor}_flavor_service"
+    module_path = f"testgen.common.database.flavor.{flavor.lower()}_flavor_service"
     class_name = f"{flavor.capitalize()}FlavorService"
     module = importlib.import_module(module_path)
     flavor_class = getattr(module, class_name)

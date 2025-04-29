@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional, Union
 from uuid import uuid4, UUID
+import base64
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session # Import Session
 from fastapi import HTTPException
@@ -15,27 +16,27 @@ from Backend.models.models import (
     ConnectionBase
 )
 from Backend.db.database import TableGroupModel, Connection # Use the corrected Connection model
-
+from testgen.common.encrypt import EncryptText
 from testgen.commands.queries.profiling_query import CProfilingSQL
 import testgen.commands.run_profiling_bridge as rpb
 #from testgen.commands.run_profiling_bridge import run_profiling_in_background
-
+ 
 # Assuming ConnectionsPage is still used for the initial test connection
 from testgen.ui.views.connections import ConnectionsPage
 import logging
-
+ 
 # Assuming you have a utility for password encryption/decryption
-
-
+ 
+ 
 # Logging config
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger(__name__)
-
+ 
 # SQLAlchemy setup
 SQLALCHEMY_DATABASE_URL = "postgresql://postgres:bhuvan@localhost:5432/postgres"
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
+ 
 # Utility functions
 def get_db():
     db = SessionLocal()
@@ -43,14 +44,14 @@ def get_db():
         yield db
     finally:
         db.close()
-
+ 
 def list_to_str(lst: List[str]) -> str:
     # Ensure input is a list before joining
     if not isinstance(lst, list):
         LOG.warning(f"Expected list for list_to_str, but got {type(lst)}. Returning empty string.")
         return ""
     return ",".join(lst)
-
+ 
 def str_to_list(s: str) -> List[str]:
     # Ensure input is a string before splitting
     if not isinstance(s, str):
@@ -58,23 +59,23 @@ def str_to_list(s: str) -> List[str]:
         return []
     # Split the string by comma and strip whitespace from each item
     return [item.strip() for item in s.split(",") if item.strip()] if s else []
-
+ 
 #-------This function is writtenn because the password column in the db table connections is binary and it needs to be encrypted inorder to save it------------
 def encrypt_password(password: str) -> bytes:
     LOG.warning("Edhi marchali future lo.")
-    if password is None: 
+    if password is None:
         return None
-    return password.encode('utf-8') 
-
+    return password.encode('utf-8')
+ 
 def decrypt_password(encrypted_password: bytes) -> str:
     LOG.warning("Edhi marchali future lo.")
     if encrypted_password is None:
         return ""
     return encrypted_password.decode('utf-8') # Example: simple decoding (NOT SECURE)
-
-
+ 
+ 
 # API logic functions
-
+ 
 #----------------------------test connection-----------------------------------
 # Uses TestConnectionRequest Pydantic model for input
 def test_connection_service(conn: TestConnectionRequest):
@@ -110,7 +111,7 @@ def test_connection_service(conn: TestConnectionRequest):
             message=f"Connection test failed: {str(e)}",
             details=None,
         )
-
+ 
 #-------------------------create connection---------------------------------
 # Uses DBConnectionCreate Pydantic model for input and Connection SQLAlchemy model for DB interaction
 def create_connection_service(conn_data: DBConnectionCreate, db: Session = next(get_db())):
@@ -122,11 +123,9 @@ def create_connection_service(conn_data: DBConnectionCreate, db: Session = next(
             connection_description=conn_data.connection_description,
             sql_flavor=conn_data.sql_flavor,
             project_host=conn_data.project_host,
-            project_port=conn_data.project_port, 
+            project_port=conn_data.project_port,
             project_user=conn_data.project_user,
-            project_pw_encrypted=encrypt_password(conn_data.password), 
-            project_db=conn_data.project_db,
-            max_threads=conn_data.max_threads,
+            project_pw_encrypted = EncryptText(conn_data.password).encode('utf-8'),
             max_query_chars=conn_data.max_query_chars,
             url=conn_data.url,
             connect_by_url=conn_data.connect_by_url,
@@ -144,8 +143,8 @@ def create_connection_service(conn_data: DBConnectionCreate, db: Session = next(
         db.rollback()
         LOG.error(f"Error creating connection: {e}")
         raise HTTPException(status_code=500, detail=f"Error creating connection: {str(e)}")
-
-
+ 
+ 
 #------------------------------------list all connection---------------------------------
 # Queries the Connection SQLAlchemy model and returns a list of DBConnectionOut
 def list_connections_service(db: Session = next(get_db())):
@@ -156,8 +155,8 @@ def list_connections_service(db: Session = next(get_db())):
     except Exception as e:
         LOG.error(f"Error listing connections: {e}")
         raise HTTPException(status_code=500, detail=f"Error listing connections: {str(e)}")
-
-
+ 
+ 
 #--------------------get one connection---------------------------------
 # Queries the Connection SQLAlchemy model by connection_id (BIGINT PK) and returns DBConnectionOut
 def get_connection_service(conn_id: int, db: Session = next(get_db())):
@@ -170,8 +169,8 @@ def get_connection_service(conn_id: int, db: Session = next(get_db())):
     except Exception as e:
         LOG.error(f"Error getting connection {conn_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error getting connection: {str(e)}")
-
-
+ 
+ 
 #----------------------------update a connection---------------------------------
 # Uses DBConnectionUpdate Pydantic model for input and updates Connection SQLAlchemy model
 def update_connection_service(conn_id: int, conn_data: DBConnectionUpdate, db: Session = next(get_db())):
@@ -179,10 +178,10 @@ def update_connection_service(conn_id: int, conn_data: DBConnectionUpdate, db: S
         conn = db.query(Connection).filter(Connection.connection_id == conn_id).first()
         if not conn:
             raise HTTPException(status_code=404, detail="Connection not found")
-
+ 
         # Gets update data from Pydantic model, excluding fields not set in the request
         update_data = conn_data.dict(exclude_unset=True)
-
+ 
         # Iterates through update data and sets attributes on the SQLAlchemy model
         for key, value in update_data.items():
             # Handles password encryption if password is being updated
@@ -199,8 +198,8 @@ def update_connection_service(conn_id: int, conn_data: DBConnectionUpdate, db: S
                     setattr(conn, key, value)
             else:
                     LOG.warning(f"Attempted to update non-existent attribute on Connection model: {key}")
-
-
+ 
+ 
         db.commit()
         db.refresh(conn)
         # Returns the updated connection as DBConnectionOut
@@ -209,8 +208,8 @@ def update_connection_service(conn_id: int, conn_data: DBConnectionUpdate, db: S
         db.rollback()
         LOG.error(f"Error updating connection {conn_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error updating connection: {str(e)}")
-
-
+ 
+ 
 #-------------------------------delete a connection---------------------------------
 # Queries and deletes a Connection SQLAlchemy object by connection_id (BIGINT PK)
 def delete_connection_service(conn_id: int, db: Session = next(get_db())):
@@ -225,8 +224,8 @@ def delete_connection_service(conn_id: int, db: Session = next(get_db())):
         db.rollback()
         LOG.error(f"Error deleting connection {conn_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error deleting connection: {str(e)}")
-
-
+ 
+ 
 #--------------------------SQLquery generation for profiling---------------------------------
 def profile_connection_service(conn_id: int, conn_data: ConnectionProfilingRequest):
     try:
@@ -242,17 +241,17 @@ def profile_connection_service(conn_id: int, conn_data: ConnectionProfilingReque
         profiler.data_schema = "testdb"
         profiler.data_table = "land_registry_price"
         profiler.contingency_columns = "'property_type', 'city'"
-
+ 
         # Assuming GetContingencyCounts is the method you want to call
         result = profiler.GetContingencyCounts()
-
+ 
         return {"status": "success", "data": result}
     except Exception as e:
         LOG.error(f"Profiling failed for connection {conn_id}: {e}")
         # Returns a failure status and message
         return {"status":"failed", "data":str(e)}
-
-
+ 
+ 
 #--------------------create table groups for a connection---------------------------------
 def create_table_group_service(conn_id: int, table_group_data: TableGroupCreate, db: Session = next(get_db())):
     try:
@@ -260,9 +259,9 @@ def create_table_group_service(conn_id: int, table_group_data: TableGroupCreate,
         connection = db.query(Connection).filter(Connection.connection_id == conn_id).first()
         if not connection:
             raise HTTPException(status_code=404, detail=f"Connection with id {conn_id} not found")
-
+ 
         project_code = connection.project_code
-
+ 
         # Explicitly map fields from TableGroupCreate Pydantic model to TableGroupModel SQLAlchemy model attributes
         db_group = TableGroupModel(
     project_code=project_code, # Assign project_code from the connection
@@ -298,7 +297,7 @@ def create_table_group_service(conn_id: int, table_group_data: TableGroupCreate,
         db.add(db_group)
         db.commit()
         db.refresh(db_group)
-
+ 
         # Manually construct the TableGroupOut object from the SQLAlchemy model
         # This ensures correct mapping and type conversions
         return TableGroupOut(
@@ -338,8 +337,8 @@ def create_table_group_service(conn_id: int, table_group_data: TableGroupCreate,
         db.rollback()
         LOG.error(f"Error creating table group for connection {conn_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error creating table group: {str(e)}")
-
-
+ 
+ 
 #--------------------get all table groups for a connection---------------------------------
 # Queries the TableGroupModel SQLAlchemy model by connection_id and returns a list of TableGroupOut
 def get_table_groups_service(conn_id: int, db: Session = next(get_db())):
@@ -385,8 +384,8 @@ def get_table_groups_service(conn_id: int, db: Session = next(get_db())):
     except Exception as e:
         LOG.error(f"Error getting table groups for connection {conn_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error getting table groups: {str(e)}")
-
-
+ 
+ 
 #--------------------get specific table group---------------------------------
 # Queries the TableGroupModel by connection_id and id (UUID) and returns TableGroupOut
 def get_specific_table_group_service(conn_id: int, group_id: str, db: Session = next(get_db())):
@@ -431,8 +430,8 @@ def get_specific_table_group_service(conn_id: int, group_id: str, db: Session = 
     except Exception as e:
         LOG.error(f"Error getting table group {group_id} for connection {conn_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error getting table group: {str(e)}")
-
-
+ 
+ 
 #-----------------------delete table group--------------------------------------
 # Queries and deletes a TableGroupModel object by connection_id and id (UUID)
 def delete_table_group_service(conn_id: int, group_id: str, db: Session = next(get_db())):
@@ -447,8 +446,8 @@ def delete_table_group_service(conn_id: int, group_id: str, db: Session = next(g
         db.rollback()
         LOG.error(f"Error deleting table group {group_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error deleting table group: {str(e)}")
-
-
+ 
+ 
 #--------------------do background profiling job---------------------------------
 # Triggers a background profiling job using the TableGroup UUID (str)
 def trigger_profiling_service(conn_id: int, group_id: str):
@@ -458,7 +457,7 @@ def trigger_profiling_service(conn_id: int, group_id: str):
     except Exception as e:
         LOG.error(f"Error triggering profiling for group {group_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
+ 
 #----------------------Test table groups------------------------------------------
 # Tests a table group using connection and table group details
 def test_table_group_service(conn_id: int, group_id: str, db: Session = next(get_db())):
@@ -467,15 +466,15 @@ def test_table_group_service(conn_id: int, group_id: str, db: Session = next(get
         connection = db.query(Connection).filter(Connection.connection_id == conn_id).first()
         if not connection:
             raise HTTPException(status_code=404, detail="Connection not found")
-
+ 
         # Gets the table group using the UUID id and BIGINT connection_id
         table_group = db.query(TableGroupModel).filter(TableGroupModel.id == group_id, TableGroupModel.connection_id == conn_id).first()
         if not table_group:
             raise HTTPException(status_code=404, detail="Table group not found")
-
+ 
         # Uses project_code from the fetched connection
         project_code = connection.project_code
-
+ 
         try:
             # Uses CProfilingSQL with details from connection and table group models
             profiler = CProfilingSQL(
@@ -486,12 +485,12 @@ def test_table_group_service(conn_id: int, group_id: str, db: Session = next(get
             profiler.data_schema = table_group.db_schema # Use db_schema from table group model
             # Converts the comma-separated string back to a list for explicit_tables
             profiler.explicit_tables = str_to_list(table_group.explicit_table_list) # Use explicit_table_list from table group model
-
+ 
             # Assuming GetPIIFlagUpdateQuery is the method you want to call for testing
             dry_run_sql = profiler.GetPIIFlagUpdateQuery()
-
+ 
             return {"status": "success", "message": "Table group is valid", "dry_run_sql": dry_run_sql}
-
+ 
         except Exception as e:
             LOG.error(f"Table group test failed for group {group_id}: {e}")
             return {
@@ -504,3 +503,4 @@ def test_table_group_service(conn_id: int, group_id: str, db: Session = next(get
     except Exception as e:
         LOG.error(f"An unexpected error occurred during table group test for group {group_id}: {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+ 

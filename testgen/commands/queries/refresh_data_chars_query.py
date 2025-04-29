@@ -55,7 +55,7 @@ class CRefreshDataCharsSQL:
         # Runs on Project DB
         sql_query = self._replace_params(
             read_template_sql_file(
-                f"schema_ddf_query_{self.sql_flavor}.sql", sub_directory=f"flavors/{self.sql_flavor}/data_chars"
+                f"schema_ddf_query_{self.sql_flavor}.sql", sub_directory=f"flavors/{self.sql_flavor.lower()}/data_chars"
             )
         )
 

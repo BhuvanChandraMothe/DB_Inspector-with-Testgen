@@ -223,6 +223,22 @@ export const getTableGroups = async (connection_id) => {
     }
 };
 
+/**
+ * Retrieves a specific table group for a connection by its ID.
+ * @param {number | string} connection_id - The connection ID.
+ * @param {string} group_id - The group ID to retrieve.
+ * @returns {Promise<object>} - The specific table group data (matches Pydantic TableGroupOut).
+ */
+export const getSpecificTableGroup = async (connection_id, group_id) => {
+    try {
+        const response = await axios.get(`${baseURL}/connection/${connection_id}/table-groups/${group_id}`);
+        return response.data; // This will be a single TableGroupOut object
+    } catch (error) {
+        console.error(`Error getting table group ${group_id}:`, error);
+        throw error;
+    }
+};
+
 
 /**
  * Deletes a table group for a connection.
@@ -243,26 +259,42 @@ export const deleteTableGroup = async (connection_id, group_id) => {
  * Updates an existing table group for a connection.
  * @param {number | string} connection_id - The connection ID.
  * @param {string} group_id - The group ID to update.
- * @param {object} data - Updated table group details.
+ * @param {object} data - Updated table group details (matching TableGroupUpdate Pydantic model).
  * @returns {Promise<object>} - The updated table group data.
+ */
+/**
+ * Updates an existing table group for a connection.
+ * @param {number | string} connection_id - The connection ID.
+ * @param {string} group_id - The group ID to update.
+ * @param {object} data - Updated table group details (should have keys matching TableGroupBase/Update model).
+ * @returns {Promise<object>} - The updated table group data (matches Pydantic TableGroupOut).
  */
 export const updateTableGroup = async (connection_id, group_id, data) => {
     try {
-        const response = await axios.put(`${baseURL}/connection/${connection_id}/table-groups/${group_id}`, {
+        // Construct the payload object correctly
+        const updatePayload = {
+            // Ensure the keys here match your backend Pydantic TableGroupUpdate model (likely inherits from TableGroupBase)
             table_group_name: data.table_group_name,
             table_group_schema: data.table_group_schema || null,
-            profiling_table_set: Array.isArray(data.explicit_table_list) ? data.explicit_table_list.join(',') : (data.explicit_table_list || null),
+
+            // FIX: Send explicit_table_list as an Array of strings, not a comma-separated string
+            explicit_table_list: Array.isArray(data.explicit_table_list) ? data.explicit_table_list : [], // Ensure it's always an array
+
             profiling_include_mask: data.profiling_include_mask || null,
             profiling_exclude_mask: data.profiling_exclude_mask || null,
             profile_id_column_mask: data.profile_id_column_mask || '%id',
             profile_sk_column_mask: data.profile_sk_column_mask || '%_sk',
             profile_use_sampling: data.profile_use_sampling || 'N',
-            profile_sample_percent: data.profile_sample_percent || '30',
+            profile_sample_percent: data.profile_sample_percent || '30', // Backend expects string
             profile_sample_min_count: data.profile_sample_min_count || 100000,
-            profiling_delay_days: data.min_profiling_age_days ? String(data.min_profiling_age_days) : '0',
-            profile_flag_cdes: data.profile_flag_cdes || true,
+
+            // FIX: Send min_profiling_age_days as an Integer or null, not a string
+            min_profiling_age_days: data.min_profiling_age_days === null || data.min_profiling_age_days === undefined ? null : parseInt(data.min_profiling_age_days, 10), // Ensure it's int or null
+
+            profile_flag_cdes: data.profile_flag_cdes === null || data.profile_flag_cdes === undefined ? true : data.profile_flag_cdes, // Default to true if null/undefined
             profile_do_pair_rules: data.profile_do_pair_rules || 'N',
-            profile_pair_rule_pct: data.profile_pair_rule_pct || 95,
+            profile_pair_rule_pct: data.profile_pair_rule_pct === null || data.profile_pair_rule_pct === undefined ? 95 : parseInt(data.profile_pair_rule_pct, 10), // Ensure it's int or null/default
+
             description: data.description || null,
             data_source: data.data_source || null,
             source_system: data.source_system || null,
@@ -272,13 +304,24 @@ export const updateTableGroup = async (connection_id, group_id, data) => {
             stakeholder_group: data.stakeholder_group || null,
             transform_level: data.transform_level || null,
             data_product: data.data_product || null,
+
+            // Handle potential UUID/string, send as is or null
             last_complete_profile_run_id: data.last_complete_profile_run_id || null,
-            dq_score_profiling: data.dq_score_profiling || null,
-            dq_score_testing: data.dq_score_testing || null,
-        });
-        return response.data;
+
+            dq_score_profiling: data.dq_score_profiling === null || data.dq_score_profiling === undefined ? null : parseFloat(data.dq_score_profiling), // Ensure it's float or null
+            dq_score_testing: data.dq_score_testing === null || data.dq_score_testing === undefined ? null : parseFloat(data.dq_score_testing), // Ensure it's float or null
+        };
+
+        console.log("Sending update payload for group", group_id, ":", updatePayload); // Log the payload being sent
+
+        const response = await axios.put(`${baseURL}/connection/${connection_id}/table-groups/${group_id}`, updatePayload);
+
+        console.log("Update successful:", response.data); // Log the success response
+        return response.data; // Return the updated group data
+
     } catch (error) {
         console.error("Error updating table group:", error);
+        // Re-throwing the error is good practice so the calling component can catch it
         throw error;
     }
 };
