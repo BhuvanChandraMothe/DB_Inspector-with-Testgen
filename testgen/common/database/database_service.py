@@ -177,8 +177,8 @@ def _GetDBCredentials(strCredentialSet):
             "dbname": clsConnectParms.dbname,
             "dbschema": clsConnectParms.schemaname,
             "user": clsConnectParms.username,
-            "flavor": strConnectflavor,
-            "dbtype": clsConnectParms.sql_flavor,
+            "flavor": strConnectflavor.lower(),
+            "dbtype": clsConnectParms.sql_flavor.lower(),
             "url": clsConnectParms.url,
             "connect_by_url": clsConnectParms.connect_by_url,
             "connect_by_key": clsConnectParms.connect_by_key,
@@ -219,7 +219,7 @@ def _InitDBConnection(strCredentialSet, strRaw="N", strAdmin="N", user_override=
     if strCredentialSet == "DKTG":
         con = _InitDBConnection_appdb(dctCredentials, strCredentialSet, strRaw, strAdmin, user_override, pwd_override)
     else:
-        flavor_service = get_flavor_service(dctCredentials["dbtype"])
+        flavor_service = get_flavor_service(dctCredentials["dbtype"].lower())
         flavor_service.init(dctCredentials)
         con = _InitDBConnection_target_db(flavor_service, strCredentialSet, strRaw, user_override, pwd_override)
     return con
@@ -479,7 +479,7 @@ class _CThreadedFetch:
             return lstResult, colNames, booError
 
 
-def RunThreadedRetrievalQueryList(strCredentialSet, lstQueries, intMaxThreads, spinner):
+def RunThreadedRetrievalQueryList(strCredentialSet, lstQueries, intMaxThreads):
     LOG.info("CurrentDB Operation: RunThreadedRetrievalQueryList. Creds: %s", strCredentialSet)
 
     lstResults = []
@@ -510,8 +510,8 @@ def RunThreadedRetrievalQueryList(strCredentialSet, lstQueries, intMaxThreads, s
 
             for future in futures:
                 lstOneResult, colName, booError = future.result()
-                if spinner:
-                    spinner.next()
+                # if spinner:
+                #     spinner.next()
                 intErrors += 1 if booError else 0
                 if lstOneResult:
                     lstResults.append(lstOneResult)

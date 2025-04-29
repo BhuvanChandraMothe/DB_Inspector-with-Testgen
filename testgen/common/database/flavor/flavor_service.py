@@ -27,7 +27,7 @@ class FlavorService:
         self.host = connection_params.get("host")
         self.port = connection_params.get("port")
         self.dbname = connection_params.get("dbname")
-        self.flavor = connection_params.get("flavor")
+        self.flavor = connection_params.get("flavor").lower()
         self.dbschema = connection_params.get("dbschema", None)
         self.connect_by_key = connection_params.get("connect_by_key", False)
         self.http_path = connection_params.get("http_path", None)

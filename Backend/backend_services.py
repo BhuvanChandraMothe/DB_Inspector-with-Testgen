@@ -125,6 +125,7 @@ def create_connection_service(conn_data: DBConnectionCreate, db: Session = next(
             project_host=conn_data.project_host,
             project_port=conn_data.project_port,
             project_user=conn_data.project_user,
+            project_db = conn_data.project_db,
             project_pw_encrypted = EncryptText(conn_data.password).encode('utf-8'),
             max_query_chars=conn_data.max_query_chars,
             url=conn_data.url,

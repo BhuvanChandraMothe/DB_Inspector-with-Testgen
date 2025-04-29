@@ -68,7 +68,7 @@ const AddTableGroupModal = ({ open, onClose, connectionId }) => {
             const payload = {
                 table_group_name: formValues.table_group_name,
                 table_group_schema: formValues.table_group_schema || null,
-                explicit_table_list: [],
+                explicit_table_list: formValues.explicit_table_list || null,    
                 profiling_include_mask: formValues.profiling_include_mask || null,
                 profiling_exclude_mask: formValues.profiling_exclude_mask || null,
                 profile_id_column_mask: formValues.profile_id_column_mask || '%id',
@@ -139,6 +139,17 @@ const AddTableGroupModal = ({ open, onClose, connectionId }) => {
                                 onChange={handleChange}
                                 fullWidth
                                 size="small"
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                label="Table name"
+                                name="explicit_table_list"
+                                value={formValues.explicit_table_list}
+                                onChange={handleChange}
+                                fullWidth
+                                size="small"
+                                required
                             />
                         </Grid>
                         <Grid item xs={12} md={6}>

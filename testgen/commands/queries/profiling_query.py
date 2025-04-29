@@ -125,7 +125,7 @@ class CProfilingSQL:
         strInputString = strInputString.replace("{CONTINGENCY_COLUMNS}", self.contingency_columns)
         strInputString = strInputString.replace("{CONTINGENCY_MAX_VALUES}", self.contingency_max_values)
         strInputString = strInputString.replace("{PROCESS_ID}", str(self.process_id))
-        strInputString = replace_templated_functions(strInputString, self.flavor)
+        strInputString = replace_templated_functions(strInputString, self.flavor.lower())
 
         return strInputString
 
@@ -255,7 +255,7 @@ class CProfilingSQL:
         # Runs on Project DB
         if not self.dctSnippetTemplate:
             self.dctSnippetTemplate = read_template_yaml_file(
-                f"project_profiling_query_{self.flavor}.yaml", sub_directory=f"flavors/{self.flavor}/profiling"
+                f"project_profiling_query_{self.flavor.lower()}.yaml", sub_directory=f"flavors/{self.flavor.lower()}/profiling"
             )
 
         dctSnippetTemplate = self.dctSnippetTemplate
@@ -348,7 +348,7 @@ class CProfilingSQL:
         # Runs on Project DB
         strQ = self.ReplaceParms(
             read_template_sql_file(
-                f"project_secondary_profiling_query_{self.flavor}.sql", sub_directory=f"flavors/{self.flavor}/profiling"
+                f"project_secondary_profiling_query_{self.flavor}.sql", sub_directory=f"flavors/{self.flavor.lower()}/profiling"
             )
         )
         return strQ
