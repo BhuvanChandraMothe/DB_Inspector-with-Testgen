@@ -53,9 +53,7 @@ const EditTableGroupModal = ({ open, onClose, connectionId, initialData, onSave 
                 table_group_schema: initialData.table_group_schema || '',
 
                 // Map array from backend to comma-separated string for TextField
-                explicit_table_list: Array.isArray(initialData.explicit_table_list)
-                                    ? initialData.explicit_table_list.join(', ') // Use join(', ') for readability
-                                    : initialData.explicit_table_list || '', // Fallback if it's unexpectedly not an array
+                explicit_table_list:initialData.explicit_table_list,
 
                 profiling_include_mask: initialData.profiling_include_mask || '%',
                 profiling_exclude_mask: initialData.profiling_exclude_mask || 'tmp%',
@@ -131,9 +129,7 @@ const EditTableGroupModal = ({ open, onClose, connectionId, initialData, onSave 
                  table_group_schema: formValues.table_group_schema || null,
 
                  // Map comma-separated string from TextField back to array for backend
-                 explicit_table_list: formValues.explicit_table_list ?
-                                      formValues.explicit_table_list.split(',').map(item => item.trim()).filter(item => item) // Split, trim whitespace, remove empty strings
-                                      : [], // Send empty array if field is empty
+                 explicit_table_list: formValues.explicit_table_list,
 
                  profiling_include_mask: formValues.profiling_include_mask || null,
                  profiling_exclude_mask: formValues.profiling_exclude_mask || null,

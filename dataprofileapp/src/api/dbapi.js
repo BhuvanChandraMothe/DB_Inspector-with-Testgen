@@ -17,7 +17,7 @@ export const testConnection = async (data) => {
             db_port: data.db_port, // Assuming the form sends this as an integer now based on Pydantic
             user_id: data.user_id,
             password: data.password,
-            database: data.database || null, // Optional database field
+            project_db: data.database || null, // Optional database field
         });
         return response.data; // This will be the TestConnectionResponse object
     } catch (error) {
@@ -175,7 +175,7 @@ export const createTableGroup = async (connection_id, data) => {
             // The payload structure directly matches the TableGroupCreate Pydantic model
             table_group_name: data.table_group_name,
             table_group_schema: data.table_group_schema || null,
-            profiling_table_set: Array.isArray(data.explicit_table_list) ? data.explicit_table_list.join(',') : (data.explicit_table_list || null), // Convert list to comma-separated string
+            explicit_table_list: data.explicit_table_list,//  if we want array to pass then Array.isArray(data.explicit_table_list) ? data.explicit_table_list.join(',') : (data.explicit_table_list || null), // Convert list to comma-separated string
             profiling_include_mask: data.profiling_include_mask || null,
             profiling_exclude_mask: data.profiling_exclude_mask || null,
             profile_id_column_mask: data.profile_id_column_mask || '%id',
@@ -278,7 +278,7 @@ export const updateTableGroup = async (connection_id, group_id, data) => {
             table_group_schema: data.table_group_schema || null,
 
             // FIX: Send explicit_table_list as an Array of strings, not a comma-separated string
-            explicit_table_list: Array.isArray(data.explicit_table_list) ? data.explicit_table_list : [], // Ensure it's always an array
+            explicit_table_list: data.explicit_table_list,
 
             profiling_include_mask: data.profiling_include_mask || null,
             profiling_exclude_mask: data.profiling_exclude_mask || null,
@@ -326,3 +326,26 @@ export const updateTableGroup = async (connection_id, group_id, data) => {
     }
 };
 
+
+/**
+ * Triggers a profiling job for a specific table group within a connection.
+ * @param {number | string} connectionId - The connection ID (BIGINT or UUID).
+ * @param {string} tableGroupId - The ID of the table group to profile.
+ * @returns {Promise<object>} - The response data from the API (e.g., job ID or status).
+ */
+export const triggerProfiling = async (connectionId, tableGroupId) => {
+        try {
+            console.log(`Attempting to trigger profiling for Connection ID: ${connectionId}, Table Group ID: ${tableGroupId}`);
+            // Make the actual API call to your backend's /run-profiling endpoint
+            // Assuming the backend expects connection_id and table_group_id in the body
+            const response = await axios.post(`${BASE_URL}/run-profiling`, {
+                connection_id: connectionId, // Send the connection ID
+                table_group_id: tableGroupId, // Send the table group ID (UUID string)
+            });
+            console.log('Profiling trigger response:', response.data);
+            return response.data; // Return the response data (e.g., job details)
+        } catch (error) {
+            console.error('Error triggering profiling job:', error);
+            throw error; // Rethrow the error so the calling component can handle it
+        }
+    };

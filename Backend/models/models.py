@@ -24,7 +24,7 @@ class ConnectionBase(BaseModel):
     project_port: str = Field(..., description="Database Port (as string)")
     project_user: str = Field(..., description="Database User ID")
     password: str = Field(..., description="Database Password (will be encrypted before saving)") # Password is required for input
-    project_db: Optional[str] = Field(None, description="Database Name (if applicable)")
+    project_db: str = Field(None, description="Database Name")
     max_threads: Optional[int] = Field(4, description="Maximum threads for connection operations")
     max_query_chars: Optional[int] = Field(None, description="Maximum characters for queries")
     url: Optional[str] = Field('', description="Connection URL (if connecting by URL)")
@@ -76,7 +76,7 @@ class DBConnectionOut(BaseModel):
     project_port: str
     project_user: str
     project_pw_encrypted: str 
-    project_db: Optional[str] = None
+    project_db: str
     max_threads: Optional[int] = None
     max_query_chars: Optional[int] = None
     url: Optional[str] = None
@@ -92,6 +92,7 @@ class DBConnectionOut(BaseModel):
         allow_population_by_field_name = True
 
 
+
 class TestConnectionRequest(BaseModel):
     # This model is specifically for the test endpoint input
     sql_flavor: str = Field(
@@ -101,7 +102,7 @@ class TestConnectionRequest(BaseModel):
     db_port: int = Field(..., title="DB Port") # Test connection expects integer port
     user_id: str = Field(..., title="User ID")
     password: str = Field(..., title="Password")
-    database: Optional[str] = Field(None, title="Database Name (if applicable)")
+    project_db: Optional[str] = Field(None, title="Database Name (if applicable)")
 
 
 class TestConnectionResponse(BaseModel):
@@ -114,7 +115,7 @@ class TableGroupBase(BaseModel):
     # Base model for Table Group input/output fields
     table_group_name: str = Field(..., description="Name of the table group")
     table_group_schema: Optional[str] = Field(None, description="Database schema for the table group")
-    explicit_table_list: List[str] = Field([], description="List of tables included in the group")
+    explicit_table_list: Optional[str] = Field(None, description="List of tables included in the group")
     profiling_include_mask: Optional[str] = Field(None, description="Mask for tables to include")
     profiling_exclude_mask: Optional[str] = Field(None, description="Mask for tables to exclude")
     profile_id_column_mask: Optional[str] = Field('%id', description="Mask for ID columns")

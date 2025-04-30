@@ -117,7 +117,6 @@ def delete_table_group_route(connection_id: int, group_id: str, db: Session = De
 # --- Trigger Background Profiling Endpoint ---
 
 @app.post("/run-profiling")
-# Use the TriggerProfilingRequest model for the request body
 def trigger_profiling_route(request_data: TriggerProfilingRequest):
     return trigger_profiling_service(conn_id=request_data.connection_id, group_id=request_data.table_group_id)
 

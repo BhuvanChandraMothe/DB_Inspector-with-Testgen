@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional, Union
 from uuid import uuid4, UUID
 import base64
 from sqlalchemy import create_engine
+from fastapi import Depends
 from sqlalchemy.orm import sessionmaker, Session # Import Session
 from fastapi import HTTPException
 from Backend.models.models import (
@@ -16,7 +17,7 @@ from Backend.models.models import (
     ConnectionBase
 )
 from Backend.db.database import TableGroupModel, Connection # Use the corrected Connection model
-from testgen.common.encrypt import EncryptText
+from testgen.common.encrypt import EncryptText, DecryptText
 from testgen.commands.queries.profiling_query import CProfilingSQL
 import testgen.commands.run_profiling_bridge as rpb
 #from testgen.commands.run_profiling_bridge import run_profiling_in_background
@@ -86,9 +87,9 @@ def test_connection_service(conn: TestConnectionRequest):
             "sql_flavor": conn.sql_flavor.lower(),
             "project_host": conn.db_hostname,
             "project_port": conn.db_port, # TestConnectionRequest expects int port
-            "project_db": conn.database,
+            "project_db": conn.project_db,
             "project_user": conn.user_id,
-            "password": conn.password,
+            "password": DecryptText(conn.password),
             "url": None,
             "connect_by_url": False,
             "connect_by_key": False,
@@ -170,6 +171,7 @@ def get_connection_service(conn_id: int, db: Session = next(get_db())):
     except Exception as e:
         LOG.error(f"Error getting connection {conn_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error getting connection: {str(e)}")
+
  
  
 #----------------------------update a connection---------------------------------
@@ -307,7 +309,7 @@ def create_table_group_service(conn_id: int, table_group_data: TableGroupCreate,
             connection_id=db_group.connection_id,
             table_group_name=db_group.name, # Map SQLA attribute 'name' to Pydantic 'table_group_name'
             table_group_schema=db_group.db_schema, # Map SQLA attribute 'db_schema' to Pydantic 'table_group_schema'
-            explicit_table_list=str_to_list(db_group.explicit_table_list), # Convert string to list for Pydantic 'explicit_table_list'
+            explicit_table_list=db_group.explicit_table_list, # Convert string to list for Pydantic 'explicit_table_list'
             # FIX: Map SQLAlchemy attribute 'tables_to_include_mask' to Pydantic field 'profiling_include_mask'
             profiling_include_mask=db_group.tables_to_include_mask,
             # FIX: Map SQLAlchemy attribute 'tables_to_exclude_mask' to Pydantic field 'profiling_exclude_mask'
