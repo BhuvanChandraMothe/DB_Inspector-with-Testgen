@@ -355,7 +355,7 @@ def get_table_groups_service(conn_id: int, db: Session = next(get_db())):
                 connection_id=group.connection_id,
                 table_group_name=group.name, # Map SQLA attribute 'name' to Pydantic 'table_group_name'
                 table_group_schema=group.db_schema, # Map SQLA attribute 'db_schema' to Pydantic 'table_group_schema'
-                explicit_table_list=str_to_list(group.explicit_table_list), # Convert string to list for Pydantic 'explicit_table_list'
+                explicit_table_list=group.explicit_table_list, # Convert string to list for Pydantic 'explicit_table_list'
                 # FIX: Map SQLAlchemy attribute 'tables_to_include_mask' to Pydantic field 'profiling_include_mask'
                 profiling_include_mask=group.tables_to_include_mask,
                 # FIX: Map SQLAlchemy attribute 'tables_to_exclude_mask' to Pydantic field 'profiling_exclude_mask'
@@ -403,7 +403,7 @@ def get_specific_table_group_service(conn_id: int, group_id: str, db: Session = 
             connection_id=group.connection_id,
             table_group_name=group.name, # Map SQLA attribute 'name' to Pydantic 'table_group_name'
             table_group_schema=group.db_schema, # Map SQLA attribute 'db_schema' to Pydantic 'table_group_schema'
-            explicit_table_list=str_to_list(group.explicit_table_list), # Convert string to list for Pydantic 'explicit_table_list'
+            explicit_table_list=group.explicit_table_list, # Convert string to list for Pydantic 'explicit_table_list'
             # FIX: Map SQLAlchemy attribute 'tables_to_include_mask' to Pydantic field 'profiling_include_mask'
             profiling_include_mask=group.tables_to_include_mask,
             # FIX: Map SQLAlchemy attribute 'tables_to_exclude_mask' to Pydantic field 'profiling_exclude_mask'
@@ -487,7 +487,7 @@ def test_table_group_service(conn_id: int, group_id: str, db: Session = next(get
             profiler.connection_id = str(conn_id) # Pass connection_id as string
             profiler.data_schema = table_group.db_schema # Use db_schema from table group model
             # Converts the comma-separated string back to a list for explicit_tables
-            profiler.explicit_tables = str_to_list(table_group.explicit_table_list) # Use explicit_table_list from table group model
+            profiler.explicit_tables = table_group.explicit_table_list # Use explicit_table_list from table group model
  
             # Assuming GetPIIFlagUpdateQuery is the method you want to call for testing
             dry_run_sql = profiler.GetPIIFlagUpdateQuery()
