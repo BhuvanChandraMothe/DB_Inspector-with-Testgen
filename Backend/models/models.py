@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, UUID4
 from typing import Optional, Literal, List, Union
 from uuid import UUID
+from datetime import datetime
 
 SUPPORTED_DB_TYPES = Literal[
     "PostgreSQL",
@@ -167,3 +168,119 @@ class ConnectionProfilingRequest(BaseModel):
     database: str # Should map to project_db
     project_code: str = "DEFAULT" # Should map to project_code
 
+class ProfilingRunOut(BaseModel):
+    id: UUID
+    project_code: str
+    connection_id: int
+    table_groups_id: UUID
+    profiling_starttime: Optional[datetime]
+    profiling_endtime: Optional[datetime]
+    status: Optional[str]
+    log_message: Optional[str]
+    table_ct: Optional[int]
+    column_ct: Optional[int]
+    anomaly_ct: Optional[int]
+    anomaly_table_ct: Optional[int]
+    anomaly_column_ct: Optional[int]
+    dq_affected_data_points: Optional[int]
+    dq_total_data_points: Optional[int]
+    dq_score_profiling: Optional[float]
+    process_id: Optional[int]
+
+    class Config:
+        orm_mode = True
+
+
+class ProfileResultOut(BaseModel):
+    id: UUID4
+    dk_id: Optional[int]
+    column_id: Optional[UUID4]
+    project_code: Optional[str]
+    connection_id: Optional[int]
+    table_groups_id: Optional[UUID4]
+    profile_run_id: Optional[UUID4]
+    schema_name: Optional[str]
+    run_date: Optional[datetime]
+    table_name: Optional[str]
+    position: Optional[int]
+    column_name: Optional[str]
+    column_type: Optional[str]
+    general_type: Optional[str]
+    record_ct: Optional[int]
+    value_ct: Optional[int]
+    distinct_value_ct: Optional[int]
+    distinct_std_value_ct: Optional[int]
+    null_value_ct: Optional[int]
+    min_length: Optional[int]
+    max_length: Optional[int]
+    avg_length: Optional[float]
+    zero_value_ct: Optional[int]
+    zero_length_ct: Optional[int]
+    lead_space_ct: Optional[int]
+    quoted_value_ct: Optional[int]
+    includes_digit_ct: Optional[int]
+    filled_value_ct: Optional[int]
+    min_text: Optional[str]
+    max_text: Optional[str]
+    upper_case_ct: Optional[int]
+    lower_case_ct: Optional[int]
+    non_alpha_ct: Optional[int]
+    mixed_case_ct: Optional[int]
+    numeric_ct: Optional[int]
+    date_ct: Optional[int]
+    top_patterns: Optional[str]
+    top_freq_values: Optional[str]
+    distinct_value_hash: Optional[str]
+    min_value: Optional[float]
+    min_value_over_0: Optional[float]
+    max_value: Optional[float]
+    avg_value: Optional[float]
+    stdev_value: Optional[float]
+    percentile_25: Optional[float]
+    percentile_50: Optional[float]
+    percentile_75: Optional[float]
+    fractional_sum: Optional[float]
+    min_date: Optional[datetime]
+    max_date: Optional[datetime]
+    before_1yr_date_ct: Optional[int]
+    before_5yr_date_ct: Optional[int]
+    before_20yr_date_ct: Optional[int]
+    before_100yr_date_ct: Optional[int]
+    within_1yr_date_ct: Optional[int]
+    within_1mo_date_ct: Optional[int]
+    future_date_ct: Optional[int]
+    distant_future_date_ct: Optional[int]
+    date_days_present: Optional[int]
+    date_weeks_present: Optional[int]
+    date_months_present: Optional[int]
+    boolean_true_ct: Optional[int]
+    datatype_suggestion: Optional[str]
+    distinct_pattern_ct: Optional[int]
+    embedded_space_ct: Optional[int]
+    avg_embedded_spaces: Optional[float]
+    std_pattern_match: Optional[str]
+    pii_flag: Optional[str]
+    functional_data_type: Optional[str]
+    functional_table_type: Optional[str]
+    sample_ratio: Optional[float]
+
+    class Config:
+        orm_mode = True
+        
+        
+class TriggerProfilingRequest(BaseModel):
+    connection_id: int
+    table_group_id: str
+    
+class RunInfo(BaseModel):
+    connection_id: int
+    profiling_id: UUID
+    status: str
+    table_groups_id: UUID
+    created_at: datetime
+
+class DashboardStats(BaseModel):
+    connections: int
+    table_groups: int
+    profiling_runs: int
+    runs: List[RunInfo]

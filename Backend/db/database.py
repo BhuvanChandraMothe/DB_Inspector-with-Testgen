@@ -18,6 +18,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Session
 import logging
+from sqlalchemy import Column, String, BigInteger, TIMESTAMP, Float, Integer, Numeric
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+import uuid
 
 # Logging config
 logging.basicConfig(level=logging.INFO)
@@ -91,6 +95,104 @@ class TableGroupModel(Base):
     dq_score_profiling = Column(Float, nullable=True)
     dq_score_testing = Column(Float, nullable=True)
 
+class ProfilingRunModel(Base):
+    __tablename__ = "profiling_runs"
+    __table_args__ = {'schema': 'tgapp'}
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_code = Column(String(30), nullable=False)
+    connection_id = Column(BigInteger, nullable=False)
+    table_groups_id = Column(PGUUID(as_uuid=True), nullable=False)
+    profiling_starttime = Column(TIMESTAMP)
+    profiling_endtime = Column(TIMESTAMP)
+    status = Column(String(100), default='Running')
+    log_message = Column(String)
+    table_ct = Column(BigInteger)
+    column_ct = Column(BigInteger)
+    anomaly_ct = Column(BigInteger)
+    anomaly_table_ct = Column(BigInteger)
+    anomaly_column_ct = Column(BigInteger)
+    dq_affected_data_points = Column(BigInteger)
+    dq_total_data_points = Column(BigInteger)
+    dq_score_profiling = Column(Float)
+    process_id = Column(Integer)
+
+
+class ProfileResultModel(Base):
+    __tablename__ = "profile_results"
+    __table_args__ = {'schema': 'tgapp'}
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dk_id = Column(BigInteger)
+    column_id = Column(PGUUID(as_uuid=True))
+    project_code = Column(String(30))
+    connection_id = Column(BigInteger)
+    table_groups_id = Column(PGUUID(as_uuid=True))
+    profile_run_id = Column(PGUUID(as_uuid=True))
+    schema_name = Column(String(50))
+    run_date = Column(TIMESTAMP)
+    table_name = Column(String(120))
+    position = Column(Integer)
+    column_name = Column(String(120))
+    column_type = Column(String(50))
+    general_type = Column(String(1))
+    record_ct = Column(BigInteger)
+    value_ct = Column(BigInteger)
+    distinct_value_ct = Column(BigInteger)
+    distinct_std_value_ct = Column(BigInteger)
+    null_value_ct = Column(BigInteger)
+    min_length = Column(Integer)
+    max_length = Column(Integer)
+    avg_length = Column(Float)
+    zero_value_ct = Column(BigInteger)
+    zero_length_ct = Column(BigInteger)
+    lead_space_ct = Column(BigInteger)
+    quoted_value_ct = Column(BigInteger)
+    includes_digit_ct = Column(BigInteger)
+    filled_value_ct = Column(BigInteger)
+    min_text = Column(String(1000))
+    max_text = Column(String(1000))
+    upper_case_ct = Column(BigInteger)
+    lower_case_ct = Column(BigInteger)
+    non_alpha_ct = Column(BigInteger)
+    mixed_case_ct = Column(BigInteger)
+    numeric_ct = Column(BigInteger)
+    date_ct = Column(BigInteger)
+    top_patterns = Column(String(1000))
+    top_freq_values = Column(String(1500))
+    distinct_value_hash = Column(String(40))
+    min_value = Column(Float)
+    min_value_over_0 = Column(Float)
+    max_value = Column(Float)
+    avg_value = Column(Float)
+    stdev_value = Column(Float)
+    percentile_25 = Column(Float)
+    percentile_50 = Column(Float)
+    percentile_75 = Column(Float)
+    fractional_sum = Column(Numeric(38, 6))
+    min_date = Column(TIMESTAMP)
+    max_date = Column(TIMESTAMP)
+    before_1yr_date_ct = Column(BigInteger)
+    before_5yr_date_ct = Column(BigInteger)
+    before_20yr_date_ct = Column(BigInteger)
+    before_100yr_date_ct = Column(BigInteger)
+    within_1yr_date_ct = Column(BigInteger)
+    within_1mo_date_ct = Column(BigInteger)
+    future_date_ct = Column(BigInteger)
+    distant_future_date_ct = Column(BigInteger)
+    date_days_present = Column(BigInteger)
+    date_weeks_present = Column(BigInteger)
+    date_months_present = Column(BigInteger)
+    boolean_true_ct = Column(BigInteger)
+    datatype_suggestion = Column(String(50))
+    distinct_pattern_ct = Column(BigInteger)
+    embedded_space_ct = Column(BigInteger)
+    avg_embedded_spaces = Column(Float)
+    std_pattern_match = Column(String(30))
+    pii_flag = Column(String(50))
+    functional_data_type = Column(String(50))
+    functional_table_type = Column(String(50))
+    sample_ratio = Column(Float)
 
 def create_tables():
     # This function is for initial database setup.

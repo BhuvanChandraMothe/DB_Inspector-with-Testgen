@@ -113,7 +113,7 @@ export const updateConnection = async (id, data) => {
             // Only send password if it's provided in the data (i.e., was changed in the form)
             password: data.password || undefined, // Use undefined to omit the field if no password is provided
             project_db: data.project_db || null,
-             // Include other optional fields if your form sends them and backend expects them
+            // Include other optional fields if your form sends them and backend expects them
             // max_threads: data.max_threads,
             // max_query_chars: data.max_query_chars,
             // url: data.url || null,
@@ -137,7 +137,7 @@ export const updateConnection = async (id, data) => {
  */
 export const deleteConnection = async (id) => {
     try {
-         // Assuming the API endpoint for deleting by ID uses the BIGINT connection_id
+        // Assuming the API endpoint for deleting by ID uses the BIGINT connection_id
         const response = await axios.delete(`${BASE_URL}/connections/${id}`);
         return response.data; // This will return a success message, like { "message": "Connection deleted successfully" }
     } catch (error) {
@@ -208,20 +208,55 @@ export const createTableGroup = async (connection_id, data) => {
     }
 };
 
+/* dumy -__________________--------------------------------------------------------------
+
+
+
+/**
+ * Fetches all table groups for a given connection ID.
+ * @param {number | string} connection_id - The connection ID.
+ * @returns {Promise<Array>} - A promise that resolves to an array of table groups.
+ */
+export const getTableGroups = async (connection_id) => {
+    try {
+        const response = await axios.get(`${baseURL}/connection/${connection_id}/table-groups/`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching table groups:", error);
+        throw error;
+    }
+};
+
+/**
+ * Fetches a specific table group by its ID for a given connection ID.
+ * @param {number | string} connection_id - The connection ID.
+ * @param {number | string} group_id - The table group ID.
+ * @returns {Promise<Object>} - A promise that resolves to the table group object.
+ */
+export const getTableGroupById = async (connection_id, group_id) => {
+    try {
+        const response = await axios.get(`${baseURL}/connection/${connection_id}/table-groups/${group_id}`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching specific table group:", error);
+        throw error;
+    }
+};
+
 /**
  * Retrieves all table groups for a connection.
  * @param {number | string} connection_id - The connection ID (BIGINT or UUID).
  * @returns {Promise<object[]>} - The list of table groups (matches Pydantic TableGroupOut[]).
  */
-export const getTableGroups = async (connection_id) => {
-    try {
-        const response = await axios.get(`${baseURL}/connection/${connection_id}/table-groups/`);
-        return response.data; // This will be an array of TableGroupOut objects
-    } catch (error) {
-        console.error("Error getting table groups:", error);
-        throw error;
-    }
-};
+// export const getTableGroups = async (connection_id) => {
+//     try {
+//         const response = await axios.get(`${baseURL}/connection/${connection_id}/table-groups/`);
+//         return response.data; // This will be an array of TableGroupOut objects
+//     } catch (error) {
+//         console.error("Error getting table groups:", error);
+//         throw error;
+//     }
+// };
 
 /**
  * Retrieves a specific table group for a connection by its ID.
@@ -334,18 +369,30 @@ export const updateTableGroup = async (connection_id, group_id, data) => {
  * @returns {Promise<object>} - The response data from the API (e.g., job ID or status).
  */
 export const triggerProfiling = async (connectionId, tableGroupId) => {
-        try {
-            console.log(`Attempting to trigger profiling for Connection ID: ${connectionId}, Table Group ID: ${tableGroupId}`);
-            // Make the actual API call to your backend's /run-profiling endpoint
-            // Assuming the backend expects connection_id and table_group_id in the body
-            const response = await axios.post(`${BASE_URL}/run-profiling`, {
-                connection_id: connectionId, // Send the connection ID
-                table_group_id: tableGroupId, // Send the table group ID (UUID string)
-            });
-            console.log('Profiling trigger response:', response.data);
-            return response.data; // Return the response data (e.g., job details)
-        } catch (error) {
-            console.error('Error triggering profiling job:', error);
-            throw error; // Rethrow the error so the calling component can handle it
-        }
-    };
+    try {
+        console.log(`Attempting to trigger profiling for Connection ID: ${connectionId}, Table Group ID: ${tableGroupId}`);
+        const response = await axios.post(`${BASE_URL}/run-profiling`, {
+            connection_id: connectionId, // Send the connection ID
+            table_group_id: tableGroupId, // Send the table group ID (UUID string)
+        });
+        console.log('Profiling trigger response:', response.data);
+        return response.data; 
+    } catch (error) {
+        console.error('Error triggering profiling job:', error);
+        throw error; 
+    }
+};
+
+
+export const fetchDashboardSummary = async () => {
+    const response = await axios.get(`${BASE_URL}/home`);
+    return response.data; // { connections: number, table_groups: number, profiling_runs: number, runs: [...] }
+};
+
+
+export const fetchProfileResult = async (conn_id, profileresult_id) => {
+    const response = await axios.get(
+      `${BASE_URL}/${conn_id}/profileresult/${profileresult_id}`
+    );
+    return response.data;
+  };

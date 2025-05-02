@@ -14,9 +14,10 @@ from Backend.models.models import (
     ConnectionProfilingRequest,
     DBConnectionOut, # Use DBConnectionOut for output
     TableGroupOut, # Use TableGroupOut for output
-    ConnectionBase
+    ProfileResultOut,
+    ProfilingRunOut
 )
-from Backend.db.database import TableGroupModel, Connection # Use the corrected Connection model
+from Backend.db.database import TableGroupModel, Connection, ProfileResultModel, ProfilingRunModel
 from testgen.common.encrypt import EncryptText, DecryptText
 from testgen.commands.queries.profiling_query import CProfilingSQL
 import testgen.commands.run_profiling_bridge as rpb
@@ -45,34 +46,6 @@ def get_db():
         yield db
     finally:
         db.close()
- 
-def list_to_str(lst: List[str]) -> str:
-    # Ensure input is a list before joining
-    if not isinstance(lst, list):
-        LOG.warning(f"Expected list for list_to_str, but got {type(lst)}. Returning empty string.")
-        return ""
-    return ",".join(lst)
- 
-def str_to_list(s: str) -> List[str]:
-    # Ensure input is a string before splitting
-    if not isinstance(s, str):
-        LOG.warning(f"Expected string for str_to_list, but got {type(s)}. Returning empty list.")
-        return []
-    # Split the string by comma and strip whitespace from each item
-    return [item.strip() for item in s.split(",") if item.strip()] if s else []
- 
-#-------This function is writtenn because the password column in the db table connections is binary and it needs to be encrypted inorder to save it------------
-def encrypt_password(password: str) -> bytes:
-    LOG.warning("Edhi marchali future lo.")
-    if password is None:
-        return None
-    return password.encode('utf-8')
- 
-def decrypt_password(encrypted_password: bytes) -> str:
-    LOG.warning("Edhi marchali future lo.")
-    if encrypted_password is None:
-        return ""
-    return encrypted_password.decode('utf-8') # Example: simple decoding (NOT SECURE)
  
  
 # API logic functions
@@ -189,7 +162,7 @@ def update_connection_service(conn_id: int, conn_data: DBConnectionUpdate, db: S
         for key, value in update_data.items():
             # Handles password encryption if password is being updated
             if key == "password" and value is not None:
-                    setattr(conn, "project_pw_encrypted", encrypt_password(value))
+                    setattr(conn, "project_pw_encrypted", EncryptText(value).encode('utf-8'))
             # Handles private key encryption if private_key is being updated
             elif key == "private_key" and value is not None:
                     setattr(conn, "private_key", value)
@@ -271,7 +244,7 @@ def create_table_group_service(conn_id: int, table_group_data: TableGroupCreate,
     connection_id=conn_id, # Assign connection_id from URL parameter
     name=table_group_data.table_group_name,
     db_schema=table_group_data.table_group_schema,
-    explicit_table_list=list_to_str(table_group_data.explicit_table_list),
+    explicit_table_list=table_group_data.explicit_table_list,
     tables_to_include_mask=table_group_data.profiling_include_mask,
     profiling_exclude_mask=table_group_data.profiling_exclude_mask,
     profiling_id_column_mask=table_group_data.profile_id_column_mask,
@@ -461,49 +434,58 @@ def trigger_profiling_service(conn_id: int, group_id: str):
         LOG.error(f"Error triggering profiling for group {group_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
  
-#----------------------Test table groups------------------------------------------
-# Tests a table group using connection and table group details
-def test_table_group_service(conn_id: int, group_id: str, db: Session = next(get_db())):
+#---------------------profiling results--------------------------------------------------------------------
+def get_profiling_runs_by_connection(conn_id: int, db: Session):
     try:
-        # Gets the DB connection using the BIGINT connection_id
-        connection = db.query(Connection).filter(Connection.connection_id == conn_id).first()
-        if not connection:
-            raise HTTPException(status_code=404, detail="Connection not found")
- 
-        # Gets the table group using the UUID id and BIGINT connection_id
-        table_group = db.query(TableGroupModel).filter(TableGroupModel.id == group_id, TableGroupModel.connection_id == conn_id).first()
-        if not table_group:
-            raise HTTPException(status_code=404, detail="Table group not found")
- 
-        # Uses project_code from the fetched connection
-        project_code = connection.project_code
- 
-        try:
-            # Uses CProfilingSQL with details from connection and table group models
-            profiler = CProfilingSQL(
-                strProjectCode=project_code,
-                flavor=connection.sql_flavor.lower(), # Use sql_flavor from the connection model
-            )
-            profiler.connection_id = str(conn_id) # Pass connection_id as string
-            profiler.data_schema = table_group.db_schema # Use db_schema from table group model
-            # Converts the comma-separated string back to a list for explicit_tables
-            profiler.explicit_tables = table_group.explicit_table_list # Use explicit_table_list from table group model
- 
-            # Assuming GetPIIFlagUpdateQuery is the method you want to call for testing
-            dry_run_sql = profiler.GetPIIFlagUpdateQuery()
- 
-            return {"status": "success", "message": "Table group is valid", "dry_run_sql": dry_run_sql}
- 
-        except Exception as e:
-            LOG.error(f"Table group test failed for group {group_id}: {e}")
-            return {
-                "status": "failed",
-                "message": f"Table group test failed: {str(e)}"
-            }
-    except HTTPException as e:
-        # Re-raises HTTPException if connection or table group is not found
-        raise e
+        results = db.query(ProfilingRunModel).filter(ProfilingRunModel.connection_id == conn_id).all()
+        if not results:
+            raise HTTPException(status_code=404, detail="No profiling runs found for this connection.")
+        return results
     except Exception as e:
-        LOG.error(f"An unexpected error occurred during table group test for group {group_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
- 
+        LOG.error(f"Error fetching profiling runs for connection {conn_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+def get_profile_results_by_run_id(conn_id: int, profileresult_id: UUID, db: Session):
+    try:
+        results = db.query(ProfileResultModel).filter(
+            ProfileResultModel.connection_id == conn_id,
+            ProfileResultModel.profile_run_id == profileresult_id
+        ).all()
+
+        if not results:
+            raise HTTPException(status_code=404, detail="No profile results found for this run.")
+
+        # Convert ORM objects to Pydantic
+        return [ProfileResultOut.from_orm(r) for r in results]
+
+    except Exception as e:
+        LOG.error(f"Error fetching profile results for run {profileresult_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+def get_all_profiling_runs_service(db: Session):
+    try:
+        connections_count = db.query(Connection).count()
+        table_groups_count = db.query(TableGroupModel).count()
+        profiling_runs = db.query(ProfilingRunModel).all()
+
+        formatted_runs = [
+            {
+                "connection_id": run.connection_id,
+                "profiling_id": run.id,
+                "status": run.status,
+                "table_groups_id": run.table_groups_id,
+                "created_at": run.profiling_starttime,
+            }
+            for run in profiling_runs
+        ]
+
+        return {
+            "connections": connections_count,
+            "table_groups": table_groups_count,
+            "profiling_runs": len(profiling_runs),
+            "runs": formatted_runs,
+        }
+
+    except Exception as e:
+        print(f"Error getting dashboard stats: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get dashboard stats")

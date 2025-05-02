@@ -29,7 +29,9 @@ from Backend.backend_services import(
     delete_table_group_service,
     profile_connection_service,
     trigger_profiling_service,
-    test_table_group_service
+    get_profile_results_by_run_id,
+    get_profiling_runs_by_connection,
+    get_all_profiling_runs_service
 )
 from Backend.models.models import (
     DBConnectionCreate,
@@ -39,8 +41,13 @@ from Backend.models.models import (
     TableGroupCreate, # Use TableGroupCreate for input
     ConnectionProfilingRequest,
     DBConnectionOut, # Use DBConnectionOut for output
-    TableGroupOut # Use TableGroupOut for output
-)
+    TableGroupOut,
+    ProfileResultOut,
+    ProfilingRunOut,
+    TriggerProfilingRequest,
+    RunInfo,
+    DashboardStats
+    )
 from pydantic import BaseModel
 from typing import List, Dict, Any # Import Dict and Any for the profiling response
 from uuid import UUID
@@ -60,9 +67,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class TriggerProfilingRequest(BaseModel):
-    connection_id: int
-    table_group_id: str
+
 
 # --- Connection Endpoints ---
 
@@ -120,8 +125,17 @@ def delete_table_group_route(connection_id: int, group_id: str, db: Session = De
 def trigger_profiling_route(request_data: TriggerProfilingRequest):
     return trigger_profiling_service(conn_id=request_data.connection_id, group_id=request_data.table_group_id)
 
-# --- Test Table Group Endpoint ---
 
-@app.get("/connections/{connection_id}/table-groups/{group_id}/test")
-def test_table_group_route(connection_id: int, group_id: str, db: Session = Depends(get_db)):
-    return test_table_group_service(conn_id=connection_id, group_id=group_id, db=db)
+#----------   Profiling Endpoints   ----------
+@app.get("/{conn_id}/profileresult", response_model=List[ProfilingRunOut])
+def get_profiling_runs_route(conn_id: int, db: Session = Depends(get_db)):
+    return get_profiling_runs_by_connection(conn_id, db)
+
+
+@app.get("/{conn_id}/profileresult/{profileresult_id}", response_model=List[ProfileResultOut])
+def get_profile_results_route(conn_id: int, profileresult_id: UUID, db: Session = Depends(get_db)):
+    return get_profile_results_by_run_id(conn_id, profileresult_id, db)
+
+@app.get("/home", response_model=DashboardStats)
+def get_all_profiling_runs(db: Session = Depends(get_db)):
+    return get_all_profiling_runs_service(db)
