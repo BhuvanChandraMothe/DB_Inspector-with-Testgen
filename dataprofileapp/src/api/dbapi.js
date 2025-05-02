@@ -102,7 +102,6 @@ export const updateConnection = async (id, data) => {
     try {
         const response = await axios.put(`${BASE_URL}/connections/${id}`, {
             // The payload structure directly matches the DBConnectionUpdate Pydantic model
-            // Only include fields that might be updated and are present in the data object
             project_code: data.project_code, // Assuming project_code can be updated
             connection_name: data.connection_name,
             connection_description: data.connection_description || null,
@@ -110,7 +109,6 @@ export const updateConnection = async (id, data) => {
             project_host: data.project_host,
             project_port: data.project_port, // This should be a string from the form now
             project_user: data.project_user,
-            // Only send password if it's provided in the data (i.e., was changed in the form)
             password: data.password || undefined, // Use undefined to omit the field if no password is provided
             project_db: data.project_db || null,
             // Include other optional fields if your form sends them and backend expects them
@@ -368,20 +366,25 @@ export const updateTableGroup = async (connection_id, group_id, data) => {
  * @param {string} tableGroupId - The ID of the table group to profile.
  * @returns {Promise<object>} - The response data from the API (e.g., job ID or status).
  */
-export const triggerProfiling = async (connectionId, tableGroupId) => {
+export const triggerProfiling = async (requestPayload) => {
     try {
-        console.log(`Attempting to trigger profiling for Connection ID: ${connectionId}, Table Group ID: ${tableGroupId}`);
-        const response = await axios.post(`${BASE_URL}/run-profiling`, {
-            connection_id: connectionId, // Send the connection ID
-            table_group_id: tableGroupId, // Send the table group ID (UUID string)
-        });
-        console.log('Profiling trigger response:', response.data);
-        return response.data; 
+      console.log(
+        `Attempting to trigger profiling for Connection ID: ${requestPayload.connection_id}, Table Group ID: ${requestPayload.table_group_id}`
+      );
+  
+      const response = await axios.post(`${BASE_URL}/run-profiling`, {
+        connection_id: requestPayload.connection_id,
+        table_group_id: requestPayload.table_group_id,
+      });
+  
+      console.log('Profiling trigger response:', response.data);
+      return response.data;
     } catch (error) {
-        console.error('Error triggering profiling job:', error);
-        throw error; 
+      console.error('Error triggering profiling job:', error);
+      throw error;
     }
-};
+  };
+  
 
 
 export const fetchDashboardSummary = async () => {

@@ -21,9 +21,22 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import { fetchDashboardSummary, fetchProfileResult } from "../api/dbapi";
 import ProfilingResultsTable from "./ProfilingResultsTable";
 import NewProfilingRunDialog from "./NewProfilingRUnDialog";
+import ConnectionsDialog from "./ConnectionDialog";
 
-const DashboardCard = ({ title, value, subtitle, chartData }) => (
-  <Paper elevation={3} sx={{ p: 3, borderRadius: 4, height: 150 }}>
+
+
+const DashboardCard = ({ title, value, subtitle, chartData, onClick }) => (
+  <Paper
+    elevation={3}
+    sx={{
+      p: 3,
+      borderRadius: 4,
+      height: 150,
+      cursor: onClick ? "pointer" : "default",
+      "&:hover": onClick ? { boxShadow: 6 } : undefined,
+    }}
+    onClick={onClick}
+  >
     <Grid container spacing={2} alignItems="center" justifyContent="space-between">
       <Grid item xs={6}>
         <Typography variant="subtitle2" color="text.secondary">
@@ -71,7 +84,8 @@ const Home = () => {
   const [error, setError] = useState(false);
   const [profilingResults, setProfilingResults] = useState(null);
   const [showResultsTable, setShowResultsTable] = useState(false);
-  const [isNewRunDialogOpen, setIsNewRunDialogOpen] = useState(false); // New state
+  const [isNewRunDialogOpen, setIsNewRunDialogOpen] = useState(false);
+  const [isConnectionDialogOpen, setIsConnectionDialogOpen] = useState(false); // ✅
 
   const loadDashboardData = async () => {
     try {
@@ -117,8 +131,11 @@ const Home = () => {
   const handleCloseNewRunDialog = () => setIsNewRunDialogOpen(false);
   const handleNewRunSuccess = () => {
     handleCloseNewRunDialog();
-    loadDashboardData(); // Reload data after a successful new run
+    loadDashboardData();
   };
+
+  const handleOpenConnectionDialog = () => setIsConnectionDialogOpen(true);
+  const handleCloseConnectionDialog = () => setIsConnectionDialogOpen(false);
 
   const columns = [
     { field: "id", headerName: "ID", width: 90 },
@@ -158,6 +175,7 @@ const Home = () => {
             value={summary.connections}
             subtitle="Active"
             chartData={dummyChartData}
+            onClick={handleOpenConnectionDialog} 
           />
         </Grid>
         <Grid item xs={12} md={4}>
@@ -219,11 +237,15 @@ const Home = () => {
         </Box>
       )}
 
-      {/* Dialog: New Profiling Run */}
+      {/* Dialogs */}
       <NewProfilingRunDialog
         open={isNewRunDialogOpen}
         onClose={handleCloseNewRunDialog}
         onRunSuccess={handleNewRunSuccess}
+      />
+      <ConnectionsDialog
+        open={isConnectionDialogOpen}
+        onClose={handleCloseConnectionDialog}
       />
     </Box>
   );
