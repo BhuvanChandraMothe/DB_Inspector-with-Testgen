@@ -253,9 +253,8 @@
 
 // export default Home;
 
-
-
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Box,
     Typography,
@@ -272,21 +271,25 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; // Import expand icon
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'; // Import collapse icon
 import { DataGrid } from "@mui/x-data-grid";
-import {
-    LineChart, Line, XAxis, YAxis,
-    ResponsiveContainer,
-    BarChart, Bar, PieChart, Pie, Cell, Legend, Tooltip as RechartsTooltip // Import Recharts components
-} from "recharts";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-// Import necessary APIs - fetchDashboardSummary, fetchProfileResult, fetchLatestProfilingRun (though fetchLatestProfilingRun might be simplified or replaced)
+// Import necessary APIs
 import { fetchDashboardSummary, fetchProfileResult } from "../api/dbapi";
-import ProfilingResultsTable from "./ProfilingResultsTable"; // Assuming this component is available
-import NewProfilingRunDialog from "./NewProfilingRUnDialog"; // Assuming this component is available
-import ConnectionsDialog from "./ConnectionDialog"; // Assuming this component is available
-import ChartOverviewDialog from "./ChartOverviewDialog"; // Import the new dialog component
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import ProfilingResultsTable from "./ProfilingResultsTable"; 
+import NewProfilingRunDialog from "./NewProfilingRUnDialog"; 
+import ConnectionsDialog from "./ConnectionDialog"; 
+import AnomalySummaryChart from "./Chart Components/AnamolySummaryChart";
+import DataCompletenessChart from "./Chart Components/DataCompletenessChart";
+import ColumnTypeDistributionChart from "./Chart Components/ColumnTypeDistributionChart";
+import PIIFlagDistributionChart from "./Chart Components/PIIFlagDistributionChart";
+import TopNullColumnsChart from "./Chart Components/TopNullColumnsChart";
+import TopCardinalityColumnsChart from "./Chart Components/TopCardinalityColumnsChart";
+import FullChartModal from "./Chart Components/FullChartModal"; 
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import update from 'immutability-helper'; 
 
-const MAX_TOP = 5; // Number of top/bottom columns to display
+
+const MAX_TOP = 5; // Number of top/bottom columns to display (can be passed as prop if needed)
 
 // Define columns for the DataGrid outside the component
 const columns = [
@@ -343,26 +346,7 @@ const DashboardCard = ({ title, value, subtitle, chartData, onClick }) => {
                         </Typography>
                     )}
                 </Grid>
-                <Grid item xs={6}>
-                    {chartData && (
-                        <ResponsiveContainer width="100%" height={60}>
-                            <LineChart data={chartData}>
-                                <Line
-                                    type="monotone"
-                                    dataKey="value"
-                                    // Use theme primary color or a specific color
-                                    stroke={theme.palette.primary.main}
-                                    strokeWidth={2}
-                                    dot={false}
-                                />
-                                <XAxis dataKey="date" hide />
-                                <YAxis hide />
-                                {/* Tooltip from Recharts */}
-                                <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: 'none' }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    )}
-                </Grid>
+                {/* Removed chartData rendering from DashboardCard as it's not used here */}
             </Grid>
         </Paper>
     );
@@ -410,13 +394,24 @@ const Home = () => {
     const [showResultsTable, setShowResultsTable] = useState(false);
     const [profilingResultsDetailed, setProfilingResultsDetailed] = useState(null); // Data for detailed results table
 
-    // State for Chart Overview Dialog
-    const [isOverviewDialogOpen, setIsOverviewDialogOpen] = useState(false);
-    const [overviewDialogTitle, setOverviewDialogTitle] = useState('');
-    const [overviewDialogContent, setOverviewDialogContent] = useState(null); // Can be string or React Node
+    // State for Full Chart Modal
+    const [isFullChartModalOpen, setIsFullChartModalOpen] = useState(false);
+    const [fullChartType, setFullChartType] = useState(null); // Type of chart to display in full view
+
+    // State to manage the order of chart components for drag and drop
+    const [chartOrder, setChartOrder] = useState([
+        'dq_score', // Keeping DQ score as a conceptual chart type for ordering
+        'anomaly',
+        'completeness',
+        'column_type',
+        'pii_flag',
+        'top_null',
+        'top_cardinality',
+    ]);
 
 
     // --- Data Fetching ---
+    // Initial data load for summary, history table, and latest run charts
     useEffect(() => {
         const loadDashboardInitialData = async () => {
             setLoading(true);
@@ -424,6 +419,7 @@ const Home = () => {
             try {
                 // 1. Fetch summary data for top cards and run history table
                 const summaryData = await fetchDashboardSummary();
+
                 const runs = summaryData.runs.map((run) => ({
                     // Use profiling_id as unique id for DataGrid
                     id: run.profiling_id,
@@ -450,7 +446,7 @@ const Home = () => {
                 });
                 setRows(runs); // Populate the history table rows
 
-                // 2. Identify the most recent run
+                // 2. Identify the most recent run from the fetched runs list
                 const latestRunSummary = runs.length > 0 ? runs[0] : null; // Assuming runs are returned in most recent order
 
                 // 3. Fetch detailed results for the most recent run (if any)
@@ -492,17 +488,31 @@ const Home = () => {
     // --- Handlers ---
     // Handler for DataGrid row click (updates charts and shows detailed results table)
     const handleProfilingRowClick = async (params) => {
-         const clickedRunSummary = params.row; // The summary data from the DataGrid row
+         const clickedRowSummary = params.row; // The summary data from the DataGrid row
+
          setShowResultsTable(false); // Hide previous detailed table while loading
 
-        // Update charts to show data for the clicked run
-        setDisplayedRunSummary(clickedRunSummary);
+        // Find the full run summary object from the rows state using the profiling_id
+        const fullClickedRunSummary = rows.find(run => run.profiling_id === clickedRowSummary.profiling_id);
+
+        if (!fullClickedRunSummary) {
+             console.error("Could not find full run summary for clicked row:", clickedRowSummary);
+             setError(`Could not find full data for run ${clickedRowSummary.id}.`);
+             setDisplayedRunSummary(null);
+             setDisplayedProfileResults([]);
+             setProfilingResultsDetailed(null);
+             setShowResultsTable(false);
+             return;
+        }
+
+        // Update charts to show data for the clicked run using the full summary data
+        setDisplayedRunSummary(fullClickedRunSummary);
         setDisplayedProfileResults([]); // Clear previous chart data while loading
         setError(''); // Clear previous errors related to chart data
 
         try {
             // Fetch detailed results for the clicked run
-            const detailedResults = await fetchProfileResult(clickedRunSummary.connection_id, clickedRunSummary.profiling_id);
+            const detailedResults = await fetchProfileResult(fullClickedRunSummary.connection_id, fullClickedRunSummary.profiling_id);
             setDisplayedProfileResults(detailedResults); // Update chart data
 
             // Also set data for the detailed results table below
@@ -513,7 +523,7 @@ const Home = () => {
             console.error("Failed to fetch detailed profiling result for row click", error);
             // Keep the run summary but clear detailed results and show error for charts
             setDisplayedProfileResults([]);
-            setError(`Failed to load detailed data for run ${clickedRunSummary.id}.`);
+            setError(`Failed to load detailed data for run ${fullClickedRunSummary.id}.`);
              // Also clear the detailed table data on error
             setProfilingResultsDetailed(null);
             setShowResultsTable(false);
@@ -543,16 +553,15 @@ const Home = () => {
     const handleOpenConnectionDialog = () => setIsConnectionDialogOpen(true);
     const handleCloseConnectionDialog = () => setIsConnectionDialogOpen(false);
 
-     // Handlers for Chart Overview Dialog
-    const handleOpenOverviewDialog = (title, content) => {
-        setOverviewDialogTitle(title);
-        setOverviewDialogContent(content);
-        setIsOverviewDialogOpen(true);
+    // Handlers for Full Chart Modal
+    const handleOpenFullChartModal = (chartType) => {
+        setFullChartType(chartType);
+        setIsFullChartModalOpen(true);
     };
-    const handleCloseOverviewDialog = () => {
-        setIsOverviewDialogOpen(false);
-        setOverviewDialogTitle('');
-        setOverviewDialogContent(null);
+
+    const handleCloseFullChartModal = () => {
+        setFullChartType(null);
+        setIsFullChartModalOpen(false);
     };
 
     // Handler for 'View Full History' Button
@@ -565,18 +574,24 @@ const Home = () => {
         setIsHistoryTableExpanded(prev => !prev);
     };
 
+    // React DnD move card function
+    const moveCard = useCallback((dragIndex, hoverIndex) => {
+        setChartOrder((prevChartOrder) =>
+            update(prevChartOrder, {
+                $splice: [
+                    [dragIndex, 1],
+                    [hoverIndex, 0, prevChartOrder[dragIndex]],
+                ],
+            }),
+        );
+    }, []);
+
 
     // --- Data Transformations for Charts ---
-    // These transformations now use displayedRunSummary and displayedProfileResults
-    const anomalyData = [
-        { name: 'Anomaly Rows', value: displayedRunSummary?.anomaly_ct || 0 },
-        { name: 'Anomaly Tables', value: displayedRunSummary?.anomaly_table_ct || 0 },
-        { name: 'Anomaly Columns', value: displayedRunSummary?.anomaly_column_ct || 0 },
-    ];
-
-    // Calculate DQ Score percentage and determine color
+    // These transformations are now mostly moved to individual chart components,
+    // but we keep DQ score calculation here as it's part of the main Home render
     const dqScorePercentage = displayedRunSummary?.dq_score_profiling !== undefined && displayedRunSummary?.dq_score_profiling !== null
-        ? (displayedRunSummary.dq_score_profiling * 100).toFixed(2) // Convert to percentage and format
+        ? (parseFloat(displayedRunSummary.dq_score_profiling) * 100).toFixed(2) // Ensure parsing as float
         : 'N/A';
 
     const dqScoreColor = (score) => {
@@ -588,157 +603,16 @@ const Home = () => {
         return theme.palette.error.main; // Red for low score
     };
 
-    // Data Completeness calculation
-    const completenessData = displayedRunSummary?.dq_total_data_points !== undefined && displayedRunSummary?.dq_total_data_points !== null && displayedRunSummary?.dq_total_data_points > 0
-        ? [
-            {
-                name: 'Complete',
-                value: displayedRunSummary.dq_total_data_points - (displayedRunSummary.dq_affected_data_points || 0), // Handle potential null/undefined
-            },
-            {
-                name: 'Affected',
-                value: displayedRunSummary.dq_affected_data_points || 0, // Handle potential null/undefined
-            },
-        ]
-        : []; // Empty array if total data points is zero or null
 
-    // Column Type Distribution calculation
-    const columnTypeData = Object.entries(
-        displayedProfileResults.reduce((acc, cur) => {
-            // Ensure general_type exists
-            if (cur.general_type) {
-                acc[cur.general_type] = (acc[cur.general_type] || 0) + 1;
-            }
-            return acc;
-        }, {})
-    ).map(([type, count]) => ({ name: type, value: count }));
-
-    // PII Flag Distribution calculation
-    const piiFlagData = Object.entries(
-        displayedProfileResults.reduce((acc, cur) => {
-             // Ensure pii_flag exists, default to 'Unknown' if null/empty
-            const flag = cur.pii_flag && cur.pii_flag.trim() !== '' ? cur.pii_flag : 'Unknown';
-            acc[flag] = (acc[flag] || 0) + 1;
-            return acc;
-        }, {})
-    ).map(([flag, count]) => ({ name: flag, value: count }));
-
-
-    // Helper function to calculate percentage safely
-    const calculatePercentage = (numerator, denominator) => {
-        if (denominator === null || denominator === undefined || denominator === 0) {
-            return 0; // Avoid division by zero
-        }
-        return (numerator / denominator) * 100;
-    };
-
-    // Top Null Columns calculation
-    const topNullCols = [...displayedProfileResults]
-        .filter(p => p.null_value_ct !== null && p.record_ct !== null && p.record_ct > 0) // Filter out invalid data
-        .map(p => ({
-            name: `${p.table_name}.${p.column_name}`,
-            percent: calculatePercentage(p.null_value_ct, p.record_ct),
-        }))
-        .sort((a, b) => b.percent - a.percent) // Sort descending by percentage
-        .slice(0, MAX_TOP); // Take top N
-
-    // Top Cardinality Columns calculation
-    const topCardinalityCols = [...displayedProfileResults]
-        .filter(p => p.distinct_value_ct !== null && p.value_ct !== null && p.value_ct > 0) // Filter out invalid data
-        .map(p => ({
-            name: `${p.table_name}.${p.column_name}`,
-            percent: calculatePercentage(p.distinct_value_ct, p.value_ct),
-        }))
-        .sort((a, b) => b.percent - a.percent) // Sort descending by percentage
-        .slice(0, MAX_TOP); // Take top N
-
-
-    // --- Chart Overview Content Generation ---
-    // These now use displayedRunSummary and displayedProfileResults
-    const generateAnomalyOverview = () => {
-        if (!displayedRunSummary) return 'No anomaly data available.';
-        return (
-            <Box>
-                <Typography variant="body1" gutterBottom>Summary of anomalies found in the currently displayed profiling run:</Typography>
-                <Typography variant="body2">Total Anomaly Rows: {displayedRunSummary.anomaly_ct || 0}</Typography>
-                <Typography variant="body2">Tables Affected: {displayedRunSummary.anomaly_table_ct || 0}</Typography>
-                <Typography variant="body2">Columns Affected: {displayedRunSummary.anomaly_column_ct || 0}</Typography>
-                 {/* Add more context if needed */}
-            </Box>
-        );
-    };
-
-     const generateCompletenessOverview = () => {
-        if (!displayedRunSummary || displayedRunSummary.dq_total_data_points === null || displayedRunSummary.dq_total_data_points === undefined) return 'No completeness data available.';
-        const complete = displayedRunSummary.dq_total_data_points - (displayedRunSummary.dq_affected_data_points || 0);
-        const affected = displayedRunSummary.dq_affected_data_points || 0;
-        const total = displayedRunSummary.dq_total_data_points;
-
-        return (
-             <Box>
-                <Typography variant="body1" gutterBottom>Data completeness summary based on affected data points:</Typography>
-                <Typography variant="body2">Total Data Points: {total}</Typography>
-                <Typography variant="body2">Complete Data Points: {complete}</Typography>
-                <Typography variant="body2">Affected Data Points: {affected}</Typography>
-                <Typography variant="body2">Completeness Percentage: {total > 0 ? ((complete / total) * 100).toFixed(2) : 0}%</Typography>
-            </Box>
-        );
-     };
-
-    const generateColumnTypeOverview = () => {
-        if (columnTypeData.length === 0) return 'No column type data available.';
-        const totalColumns = displayedProfileResults.length;
-        const content = (
-            <Box>
-                <Typography variant="body1" gutterBottom>Distribution of general column types across the profiled tables:</Typography>
-                {columnTypeData.map((item, index) => (
-                    <Typography variant="body2" key={index}>{item.name}: {item.value} columns ({totalColumns > 0 ? ((item.value / totalColumns) * 100).toFixed(1) : 0}%)</Typography>
-                ))}
-                 {/* Add explanation of general types (N, A, D, B, O) if helpful */}
-            </Box>
-        );
-        return content;
-    };
-
-     const generatePiiFlagOverview = () => {
-        if (piiFlagData.length === 0) return 'No PII flag data available.';
-        const totalColumns = displayedProfileResults.length;
-        const content = (
-            <Box>
-                <Typography variant="body1" gutterBottom>Distribution of PII (Personally Identifiable Information) flags across columns:</Typography>
-                 {piiFlagData.map((item, index) => (
-                    <Typography variant="body2" key={index}>{item.name}: {item.value} columns ({totalColumns > 0 ? ((item.value / totalColumns) * 100).toFixed(1) : 0}%)</Typography>
-                ))}
-                 {/* Add explanation of PII flag meanings if helpful */}
-            </Box>
-        );
-        return content;
-     };
-
-    const generateTopNullColsOverview = () => {
-        if (topNullCols.length === 0) return 'No columns with null values found or data is incomplete.';
-        const content = (
-            <Box>
-                <Typography variant="body1" gutterBottom>Top {MAX_TOP} columns with the highest percentage of null values:</Typography>
-                {topNullCols.map((col, index) => (
-                    <Typography variant="body2" key={index}>{col.name}: {col.percent.toFixed(1)}% nulls</Typography>
-                ))}
-            </Box>
-        );
-        return content;
-    };
-
-    const generateTopCardinalityColsOverview = () => {
-         if (topCardinalityCols.length === 0) return 'No columns with distinct values found or data is incomplete.';
-        const content = (
-            <Box>
-                <Typography variant="body1" gutterBottom>Top {MAX_TOP} columns with the highest cardinality (distinct value percentage):</Typography>
-                 {topCardinalityCols.map((col, index) => (
-                    <Typography variant="body2" key={index}>{col.name}: {col.percent.toFixed(1)}% distinct</Typography>
-                ))}
-            </Box>
-        );
-        return content;
+    // Map chart type identifiers to their components
+    const chartComponents = {
+        anomaly: AnomalySummaryChart,
+        completeness: DataCompletenessChart,
+        column_type: ColumnTypeDistributionChart,
+        pii_flag: PIIFlagDistributionChart,
+        top_null: TopNullColumnsChart,
+        top_cardinality: TopCardinalityColumnsChart,
+        // DQ Score is handled separately as it's not a standard Recharts component
     };
 
 
@@ -751,368 +625,258 @@ const Home = () => {
         );
     }
 
-    // Render dashboard only if initial summary data is loaded, even if charts data fails
+    // Determine if charts should be shown
     const showCharts = displayedRunSummary && displayedProfileResults.length > 0;
 
     return (
-        // Attach double click handler to the main container
-        <Box p={4} onDoubleClick={showCharts ? handleDoubleClickMain : undefined} sx={{ cursor: showCharts ? 'pointer' : 'default' }}>
-            <Typography variant="h4" gutterBottom>
-                Dashboard Overview
-            </Typography>
-
-            {/* Optional: Add a caption indicating double-click functionality */}
-            {showCharts && (
-                <Typography variant="caption" color="text.secondary" display="block" mb={2}>
-                    Double click anywhere on the dashboard to see full detailed results for the currently displayed run ({displayedRunSummary?.id}).
+        // Wrap the main content with DndProvider
+        <DndProvider backend={HTML5Backend}>
+            {/* Attach double click handler to the main container */}
+            <Box p={4} onDoubleClick={showCharts ? handleDoubleClickMain : undefined} sx={{ cursor: showCharts ? 'pointer' : 'default' }}>
+                <Typography variant="h4" gutterBottom>
+                    Dashboard Overview
                 </Typography>
-            )}
 
-             {/* Error message for chart data */}
-             {error && (
-                 <Box textAlign="center" my={2}>
-                    <Typography variant="h6" color="error">{error}</Typography>
-                 </Box>
-             )}
-
-
-            {/* Top Summary Cards */}
-            <Grid container spacing={3} mb={4}>
-                <Grid item xs={12} md={4}>
-                    <DashboardCard
-                        title="Connections"
-                        value={summary.connections}
-                        subtitle="Active"
-                        // dummyChartData={dummyChartData} // Remove dummy data if not needed
-                        onClick={handleOpenConnectionDialog}
-                    />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                    <DashboardCard
-                        title="Table Groups"
-                        value={summary.table_groups}
-                        subtitle="Linked"
-                    />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                    <DashboardCard
-                        title="Profiling Runs"
-                        value={summary.profiling_runs}
-                        subtitle="Total Executed"
-                    />
-                </Grid>
-            </Grid>
-
-            {/* Charts Section - Only render if displayedRunSummary and displayedProfileResults are available */}
-            {showCharts ? (
-                <Grid container spacing={3} mb={4}>
-                     {/* DQ Score */}
-                    <Grid item xs={12} sm={6} md={4}>
-                        {/* Wrap Paper in Box to attach onClick */}
-                         <Box onClick={() => handleOpenOverviewDialog('Data Quality Score Overview', generateCompletenessOverview())} sx={{ cursor: 'pointer', height: '100%' }}> {/* Added height 100% */}
-                            <Paper sx={{ p: 3, textAlign: 'center', height: '100%', minHeight: 200 }}> {/* Added minHeight */}
-                                <Tooltip title={`Data Quality Score: ${dqScorePercentage}%`}>
-                                    <Typography variant="h5" sx={{ color: dqScoreColor(dqScorePercentage), fontWeight: 'bold' }}>
-                                        DQ Score: {dqScorePercentage}%
-                                    </Typography>
-                                </Tooltip>
-                                <Typography variant="body2" color="text.secondary" mt={1}>
-                                    Total Rows: {displayedRunSummary.table_ct || 0} | Total Columns: {displayedRunSummary.column_ct || 0}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    Affected Data Points: {displayedRunSummary.dq_affected_data_points || 0} / {displayedRunSummary.dq_total_data_points || 0}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary" mt={2} display="block">
-                                    Click for overview
-                                </Typography>
-                            </Paper>
-                        </Box>
-                    </Grid>
-
-                    {/* Anomaly Summary */}
-                    <Grid item xs={12} sm={6} md={4}>
-                         {/* Wrap Paper in Box to attach onClick */}
-                        <Box onClick={() => handleOpenOverviewDialog('Anomaly Summary Overview', generateAnomalyOverview())} sx={{ cursor: 'pointer', height: '100%' }}> {/* Added height 100% */}
-                            <Paper sx={{ p: 2, height: '100%', minHeight: 280 }}> {/* Added minHeight */}
-                                <Typography variant="h6" gutterBottom>Anomaly Summary</Typography>
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <BarChart data={anomalyData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                        <XAxis dataKey="name" stroke={theme.palette.text.primary} />
-                                        <YAxis stroke={theme.palette.text.primary} />
-                                        <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: 'none' }} />
-                                        <Bar dataKey="value" fill={theme.palette.primary.main} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                                <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={1}>
-                                    Click for overview
-                                </Typography>
-                            </Paper>
-                        </Box>
-                    </Grid>
-
-                    {/* Data Completeness */}
-                    <Grid item xs={12} sm={6} md={4}>
-                         {/* Wrap Paper in Box to attach onClick */}
-                        <Box onClick={() => handleOpenOverviewDialog('Data Completeness Overview', generateCompletenessOverview())} sx={{ cursor: 'pointer', height: '100%' }}> {/* Added height 100% */}
-                            <Paper sx={{ p: 2, height: '100%', minHeight: 280 }}> {/* Added minHeight */}
-                                <Typography variant="h6" gutterBottom>Data Completeness</Typography>
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <PieChart margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                        <Pie
-                                            data={completenessData}
-                                            dataKey="value"
-                                            nameKey="name"
-                                            outerRadius={70}
-                                            label={(entry) => `${entry.name}: ${entry.value}`}
-                                        >
-                                            {completenessData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: 'none' }} />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={1}>
-                                    Click for overview
-                                </Typography>
-                            </Paper>
-                        </Box>
-                    </Grid>
-
-                    {/* Column Type Distribution */}
-                    <Grid item xs={12} sm={6}>
-                         {/* Wrap Paper in Box to attach onClick */}
-                        <Box onClick={() => handleOpenOverviewDialog('Column Type Distribution Overview', generateColumnTypeOverview())} sx={{ cursor: 'pointer', height: '100%' }}> {/* Added height 100% */}
-                            <Paper sx={{ p: 2, height: '100%', minHeight: 330 }}> {/* Added minHeight */}
-                                <Typography variant="h6" gutterBottom>Column Type Distribution</Typography>
-                                <ResponsiveContainer width="100%" height={250}>
-                                    <PieChart margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                        <Pie
-                                            data={columnTypeData}
-                                            dataKey="value"
-                                            nameKey="name"
-                                            outerRadius={90}
-                                            label={(entry) => `${entry.name}: ${entry.value}`}
-                                        >
-                                            {columnTypeData.map((entry, index) => (
-                                                <Cell key={`type-cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: 'none' }} />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={1}>
-                                    Click for overview
-                                </Typography>
-                            </Paper>
-                        </Box>
-                    </Grid>
-
-                    {/* PII Flag Distribution */}
-                    <Grid item xs={12} sm={6}>
-                         {/* Wrap Paper in Box to attach onClick */}
-                         <Box onClick={() => handleOpenOverviewDialog('PII Flag Distribution Overview', generatePiiFlagOverview())} sx={{ cursor: 'pointer', height: '100%' }}> {/* Added height 100% */}
-                            <Paper sx={{ p: 2, height: '100%', minHeight: 330 }}> {/* Added minHeight */}
-                                <Typography variant="h6" gutterBottom>PII Flag Distribution</Typography>
-                                <ResponsiveContainer width="100%" height={250}>
-                                    <PieChart margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                        <Pie
-                                            data={piiFlagData}
-                                            dataKey="value"
-                                            nameKey="name"
-                                            outerRadius={90}
-                                            label={(entry) => `${entry.name}: ${entry.value}`}
-                                        >
-                                            {piiFlagData.map((entry, index) => (
-                                                <Cell key={`pii-cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: 'none' }} />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={1}>
-                                    Click for overview
-                                </Typography>
-                            </Paper>
-                        </Box>
-                    </Grid>
-
-                    {/* Top Null Columns */}
-                    <Grid item xs={12} md={6}>
-                         {/* Wrap Paper in Box to attach onClick */}
-                         <Box onClick={() => handleOpenOverviewDialog(`Top ${MAX_TOP} Null Columns Overview`, generateTopNullColsOverview())} sx={{ cursor: 'pointer', height: '100%' }}> {/* Added height 100% */}
-                            <Paper sx={{ p: 2, height: '100%', minHeight: 350 }}> {/* Added minHeight */}
-                                <Typography variant="h6" gutterBottom>Top {MAX_TOP} Columns by Null %</Typography>
-                                <ResponsiveContainer width="100%" height={250}>
-                                    {/* Adjusted XAxis height and interval for better label display */}
-                                    <BarChart data={topNullCols} margin={{ top: 5, right: 30, left: 20, bottom: 80 }}> {/* Increased bottom margin for labels */}
-                                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} interval={0} stroke={theme.palette.text.primary} />
-                                        <YAxis stroke={theme.palette.text.primary} label={{ value: 'Null %', angle: -90, position: 'insideLeft', fill: theme.palette.text.primary }} />
-                                        <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: 'none' }} />
-                                        <Bar dataKey="percent" fill={theme.palette.error.main} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                                <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={1}>
-                                    Click for overview
-                                </Typography>
-                            </Paper>
-                        </Box>
-                    </Grid>
-
-                    {/* Top Cardinality Columns */}
-                    <Grid item xs={12} md={6}>
-                         {/* Wrap Paper in Box to attach onClick */}
-                        <Box onClick={() => handleOpenOverviewDialog(`Top ${MAX_TOP} Cardinality Columns Overview`, generateTopCardinalityColsOverview())} sx={{ cursor: 'pointer', height: '100%' }}> {/* Added height 100% */}
-                            <Paper sx={{ p: 2, height: '100%', minHeight: 350 }}> {/* Added minHeight */}
-                                <Typography variant="h6" gutterBottom>Top {MAX_TOP} Columns by Cardinality %</Typography>
-                                <ResponsiveContainer width="100%" height={250}>
-                                    <BarChart data={topCardinalityCols} margin={{ top: 5, right: 30, left: 20, bottom: 80 }}> {/* Increased bottom margin for labels */}
-                                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} interval={0} stroke={theme.palette.text.primary} />
-                                        <YAxis stroke={theme.palette.text.primary} label={{ value: 'Cardinality %', angle: -90, position: 'insideLeft', fill: theme.palette.text.primary }} />
-                                        <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: 'none' }} />
-                                        <Bar dataKey="percent" fill={theme.palette.info.main} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                                <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={1}>
-                                    Click for overview
-                                </Typography>
-                            </Paper>
-                        </Box>
-                    </Grid>
-                </Grid>
-            ) : (
-                // Message when no chart data is available for charts
-                <Box textAlign="center" my={4}>
-                    <Typography variant="h6" color="text.secondary">
-                        {error || 'No profiling run data available to display charts. Run a profiling job or select a run from the history below.'}
+                {/* Optional: Add a caption indicating double-click functionality */}
+                {showCharts && (
+                    <Typography variant="caption" color="text.secondary" display="block" mb={2}>
+                        Double click anywhere on the dashboard to see full detailed results for the currently displayed run ({displayedRunSummary?.id}).
                     </Typography>
-                </Box>
-            )}
+                )}
+
+                 {/* Error message for chart data */}
+                 {error && (
+                     <Box textAlign="center" my={2}>
+                        <Typography variant="h6" color="error">{error}</Typography>
+                     </Box>
+                 )}
 
 
-            {/* Profiling Runs Table Section */}
-            <Paper elevation={3} sx={{ p: 3, borderRadius: 4, mt: 4 }}> {/* Added margin top */}
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="h6">Profiling Run Records</Typography>
-                    <Box>
-                         {/* Toggle History Table Button */}
-                        <Button
-                            variant="outlined"
-                            onClick={handleToggleHistoryTable}
-                            startIcon={isHistoryTableExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
-                            sx={{ mr: 1 }} // Add margin to the right
-                        >
-                            {isHistoryTableExpanded ? 'Hide History' : 'Show History'}
-                        </Button>
-                         {/* New Run Button */}
-                        <Button
-                            variant="outlined"
-                            startIcon={<AddCircleOutlineIcon />}
-                            onClick={handleOpenNewRunDialog}
-                        >
-                            New Run
-                        </Button>
-                    </Box>
-                </Box>
+                {/* Top Summary Cards */}
+                <Grid container spacing={3} mb={4}>
+                    <Grid item xs={12} md={4}>
+                        <DashboardCard
+                            title="Connections"
+                            value={summary.connections}
+                            subtitle="Active"
+                            onClick={handleOpenConnectionDialog}
+                        />
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                        <DashboardCard
+                            title="Table Groups"
+                            value={summary.table_groups}
+                            subtitle="Linked"
+                        />
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                        <DashboardCard
+                            title="Profiling Runs"
+                            value={summary.profiling_runs}
+                            subtitle="Total Executed"
+                        />
+                    </Grid>
+                </Grid>
 
-                {/* Collapsible DataGrid for Run History */}
-                <Collapse in={isHistoryTableExpanded}>
-                    {/* Loading and error handling for this section is covered by the main loading/error state */}
-                    {rows.length > 0 ? ( // Only render DataGrid if there are rows
-                        <div style={{ height: 500, width: "100%" }}>
-                            <DataGrid
-                                rows={rows}
-                                columns={columns} // columns is now defined outside and available
-                                pageSize={10}
-                                rowsPerPageOptions={[10]}
-                                disableRowSelectionOnClick
-                                onRowClick={handleProfilingRowClick} // Use the handler to update charts and show detailed table
-                                sx={{ // Add dark mode styles for DataGrid
-                                    '& .MuiDataGrid-root': {
-                                        border: 'none',
-                                    },
-                                    '& .MuiDataGrid-cell': {
-                                        borderColor: theme.palette.divider,
-                                        color: theme.palette.text.primary,
-                                    },
-                                    '& .MuiDataGrid-columnsContainer': {
-                                        borderColor: theme.palette.divider,
-                                        bgcolor: '#e0e0e0', // Header background
-                                        color: theme.palette.text.primary,
-                                    },
-                                     '& .MuiDataGrid-columnHeaders': {
-                                         bgcolor: theme.palette.background.paper, // Ensure header background is consistent
-                                     },
-                                    '& .MuiDataGrid-columnHeaderTitle': {
-                                        fontWeight: 'bold',
-                                    },
-                                    '& .MuiDataGrid-row': {
-                                        '&:nth-of-type(odd)': {
-                                            bgcolor: theme.palette.action.hover, // Subtle striping
-                                        },
-                                        '&:hover': {
-                                            bgcolor: theme.palette.action.selected, // Hover color
-                                            cursor: 'pointer',
-                                        },
-                                    },
-                                    '& .MuiDataGrid-footerContainer': {
-                                        borderColor: theme.palette.divider,
-                                        bgcolor: theme.palette.background.paper, // Footer background
-                                        color: theme.palette.text.primary,
-                                    },
-                                     '& .MuiTablePagination-root': {
-                                         color: theme.palette.text.primary, // Pagination text color
-                                     },
-                                     '& .MuiSvgIcon-root': {
-                                         color: theme.palette.action.active, // Pagination icon color
-                                     }
+                {/* Charts Section - Only render if displayedRunSummary and displayedProfileResults are available */}
+                {showCharts ? (
+                    <Grid container spacing={3} mb={4}>
+                         {/* DQ Score (remains here as it's not a standard chart component) */}
+                        <Grid item xs={12} sm={6} md={4}>
+                             <Box
+                                // DQ Score doesn't open a full chart view, but can have an overview dialog
+                                onClick={() => handleOpenFullChartModal('dq_score')} // Using the modal for DQ overview as well
+                                onMouseEnter={e => {
+                                     // Optional: Add a popover for DQ score on hover if needed
+                                     // handlePopoverOpen(e, 'dq_score_overview');
                                 }}
-                            />
-                        </div>
-                    ) : (
-                        // Message when no run history is available
-                         <Box textAlign="center" py={5}>
-                            <Typography variant="body1" color="text.secondary">No profiling run history available.</Typography>
+                                onMouseLeave={e => {
+                                     // Optional: Close popover
+                                     // handlePopoverClose();
+                                }}
+                                sx={{ cursor: 'pointer', height: '100%' }}
+                            >
+                                <Paper sx={{ p: 3, textAlign: 'center', height: '100%', minHeight: 200 }}>
+                                    <Tooltip title={`Data Quality Score: ${dqScorePercentage}%`}>
+                                        <Typography variant="h5" sx={{ color: dqScoreColor(dqScorePercentage), fontWeight: 'bold' }}>
+                                            DQ Score: {dqScorePercentage}%
+                                        </Typography>
+                                    </Tooltip>
+                                    <Typography variant="body2" color="text.secondary" mt={1}>
+                                        Total Rows: {displayedRunSummary?.table_ct || 0} | Total Columns: {displayedRunSummary?.column_ct || 0}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Affected Data Points: {displayedRunSummary?.dq_affected_data_points || 0} / {displayedRunSummary?.dq_total_data_points || 0}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" mt={2} display="block">
+                                        Click for overview
+                                    </Typography>
+                                </Paper>
+                            </Box>
+                        </Grid>
+
+                        {/* Render other charts based on chartOrder state */}
+                        {chartOrder
+                            .filter(type => type !== 'dq_score') // Exclude DQ score as it's rendered above
+                            .map((chartType, index) => {
+                                const ChartComponent = chartComponents[chartType];
+                                if (!ChartComponent) return null;
+
+                                return (
+                                    <ChartComponent
+                                        key={chartType} // Use chart type as key
+                                        id={chartType} // Pass id for drag and drop
+                                        index={index} // Pass index for drag and drop
+                                        displayedRunSummary={displayedRunSummary}
+                                        displayedProfileResults={displayedProfileResults}
+                                        onChartClick={handleOpenFullChartModal} // Pass handler for full view
+                                        moveCard={moveCard} // Pass move function for drag and drop
+                                        COLORS={COLORS} // Pass COLORS array
+                                    />
+                                );
+                            })}
+                    </Grid>
+                ) : (
+                    // Message when no chart data is available for charts
+                    <Box textAlign="center" my={4}>
+                        <Typography variant="h6" color="text.secondary">
+                            {error || 'No profiling run data available to display charts. Run a profiling job or select a run from the history below.'}
+                        </Typography>
+                    </Box>
+                )}
+
+
+                {/* Profiling Runs Table Section */}
+                <Paper elevation={3} sx={{ p: 3, borderRadius: 4, mt: 4 }}> {/* Added margin top */}
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                        <Typography variant="h6">Profiling Run Records</Typography>
+                        <Box>
+                             {/* Toggle History Table Button */}
+                            <Button
+                                variant="outlined"
+                                onClick={handleToggleHistoryTable}
+                                startIcon={isHistoryTableExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
+                                sx={{ mr: 1 }} // Add margin to the right
+                            >
+                                {isHistoryTableExpanded ? 'Hide History' : 'Show History'}
+                            </Button>
+                             {/* New Run Button */}
+                            <Button
+                                variant="outlined"
+                                startIcon={<AddCircleOutlineIcon />}
+                                onClick={handleOpenNewRunDialog}
+                            >
+                                New Run
+                            </Button>
+                        </Box>
+                    </Box>
+
+                    {/* Collapsible DataGrid for Run History */}
+                    <Collapse in={isHistoryTableExpanded}>
+                        {/* Loading and error handling for this section is covered by the main loading/error state */}
+                        {rows.length > 0 ? ( // Only render DataGrid if there are rows
+                            <div style={{ height: 500, width: "100%" }}>
+                                <DataGrid
+                                    rows={rows}
+                                    columns={columns} // columns is now defined outside and available
+                                    pageSize={10}
+                                    rowsPerPageOptions={[10]}
+                                    disableRowSelectionOnClick
+                                    onRowClick={handleProfilingRowClick} // Use the handler to update charts and show detailed table
+                                    sx={{ // Add dark mode styles for DataGrid
+                                        '& .MuiDataGrid-root': {
+                                            border: 'none',
+                                        },
+                                        '& .MuiDataGrid-cell': {
+                                            borderColor: theme.palette.divider,
+                                            color: theme.palette.text.primary,
+                                        },
+                                        '& .MuiDataGrid-columnsContainer': {
+                                            borderColor: theme.palette.divider,
+                                            bgcolor: theme.palette.background.paper, // Header background
+                                            color: theme.palette.text.primary,
+                                        },
+                                         '& .MuiDataGrid-columnHeaders': {
+                                             bgcolor: theme.palette.background.paper, // Ensure header background is consistent
+                                         },
+                                        '& .MuiDataGrid-columnHeaderTitle': {
+                                            fontWeight: 'bold',
+                                        },
+                                        '& .MuiDataGrid-row': {
+                                            '&:nth-of-type(odd)': {
+                                                bgcolor: theme.palette.action.hover, // Subtle striping
+                                            },
+                                            '&:hover': {
+                                                bgcolor: theme.palette.action.selected, // Hover color
+                                                cursor: 'pointer',
+                                            },
+                                        },
+                                        '& .MuiDataGrid-footerContainer': {
+                                            borderColor: theme.palette.divider,
+                                            bgcolor: theme.palette.background.paper, // Footer background
+                                            color: theme.palette.text.primary,
+                                        },
+                                         '& .MuiTablePagination-root': {
+                                             color: theme.palette.text.primary, // Pagination text color
+                                         },
+                                         '& .MuiSvgIcon-root': {
+                                             color: theme.palette.action.active, // Pagination icon color
+                                         }
+                                    }}
+                                />
+                            </div>
+                        ) : (
+                            // Message when no run history is available
+                             <Box textAlign="center" py={5}>
+                                <Typography variant="body1" color="text.secondary">No profiling run history available.</Typography>
+                             </Box>
+                        )}
+                    </Collapse>
+
+
+                    {/* View Full History Button */}
+                    {rows.length > 0 && ( // Only show button if there's history
+                         <Box mt={2} textAlign="center">
+                            <Button variant="outlined" onClick={handleViewFullHistory}>
+                                View Full History Page
+                            </Button>
                          </Box>
                     )}
-                </Collapse>
 
+                </Paper>
 
-               
-            </Paper>
+                {/* Detailed Profiling Results Section (appears when a history row is clicked) */}
+                {showResultsTable && profilingResultsDetailed && (
+                    <Box mt={4}>
+                        <Typography variant="h6" gutterBottom>
+                            Detailed Profiling Results for Run {displayedRunSummary?.id}
+                        </Typography>
+                        {/* Assuming ProfilingResultsTable component is available and accepts profilingData prop */}
+                        <ProfilingResultsTable profilingData={profilingResultsDetailed} />
+                    </Box>
+                )}
 
-            {/* Detailed Profiling Results Section (appears when a history row is clicked) */}
-            {showResultsTable && profilingResultsDetailed && (
-                <Box mt={4}>
-                    <Typography variant="h6" gutterBottom>
-                        Detailed Profiling Results for Run {displayedRunSummary?.id}
-                    </Typography>
-                    {/* Assuming ProfilingResultsTable component is available and accepts profilingData prop */}
-                    <ProfilingResultsTable profilingData={profilingResultsDetailed} />
-                </Box>
-            )}
-
-            {/* Dialogs */}
-            <NewProfilingRunDialog
-                open={isNewRunDialogOpen}
-                onClose={handleCloseNewRunDialog}
-                onRunSuccess={handleNewRunSuccess}
-            />
-            <ConnectionsDialog
-                open={isConnectionDialogOpen}
-                onClose={handleCloseConnectionDialog}
-            />
-             {/* New Chart Overview Dialog */}
-            <ChartOverviewDialog
-                open={isOverviewDialogOpen}
-                onClose={handleCloseOverviewDialog}
-                title={overviewDialogTitle}
-                content={overviewDialogContent}
-            />
-        </Box>
+                {/* Dialogs */}
+                <NewProfilingRunDialog
+                    open={isNewRunDialogOpen}
+                    onClose={handleCloseNewRunDialog}
+                    onRunSuccess={handleNewRunSuccess}
+                />
+                <ConnectionsDialog
+                    open={isConnectionDialogOpen}
+                    onClose={handleCloseConnectionDialog}
+                />
+                 {/* Full Chart Modal */}
+                <FullChartModal
+                    open={isFullChartModalOpen}
+                    onClose={handleCloseFullChartModal}
+                    chartType={fullChartType}
+                    displayedRunSummary={displayedRunSummary}
+                    displayedProfileResults={displayedProfileResults}
+                    COLORS={COLORS} // Pass colors to the modal
+                />
+            </Box>
+        </DndProvider>
     );
 };
 

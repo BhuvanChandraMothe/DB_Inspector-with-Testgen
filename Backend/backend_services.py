@@ -56,6 +56,9 @@ def get_db():
 def test_connection_service(conn: TestConnectionRequest):
     try:
         con = ConnectionsPage()
+        password = conn.password
+        if any(c in password for c in ['/', '+', '=']) and len(password) > 30:
+            password = DecryptText(password)
         # Maps fields from Pydantic model to the dictionary expected by ConnectionsPage
         connection_dict = {
             "sql_flavor": conn.sql_flavor.lower(),
@@ -63,7 +66,7 @@ def test_connection_service(conn: TestConnectionRequest):
             "project_port": conn.db_port, # TestConnectionRequest expects int port
             "project_db": conn.project_db,
             "project_user": conn.user_id,
-            "password": DecryptText(conn.password),
+            "password": password,
             "url": None,
             "connect_by_url": False,
             "connect_by_key": False,
