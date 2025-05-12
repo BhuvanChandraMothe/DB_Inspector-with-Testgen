@@ -368,23 +368,23 @@ export const updateTableGroup = async (connection_id, group_id, data) => {
  */
 export const triggerProfiling = async (requestPayload) => {
     try {
-      console.log(
-        `Attempting to trigger profiling for Connection ID: ${requestPayload.connection_id}, Table Group ID: ${requestPayload.table_group_id}`
-      );
-  
-      const response = await axios.post(`${BASE_URL}/run-profiling`, {
-        connection_id: requestPayload.connection_id,
-        table_group_id: requestPayload.table_group_id,
-      });
-  
-      console.log('Profiling trigger response:', response.data);
-      return response.data;
+        console.log(
+            `Attempting to trigger profiling for Connection ID: ${requestPayload.connection_id}, Table Group ID: ${requestPayload.table_group_id}`
+        );
+
+        const response = await axios.post(`${BASE_URL}/run-profiling`, {
+            connection_id: requestPayload.connection_id,
+            table_group_id: requestPayload.table_group_id,
+        });
+
+        console.log('Profiling trigger response:', response.data);
+        return response.data;
     } catch (error) {
-      console.error('Error triggering profiling job:', error);
-      throw error;
+        console.error('Error triggering profiling job:', error);
+        throw error;
     }
-  };
-  
+};
+
 
 
 export const fetchDashboardSummary = async () => {
@@ -395,7 +395,13 @@ export const fetchDashboardSummary = async () => {
 
 export const fetchProfileResult = async (conn_id, profileresult_id) => {
     const response = await axios.get(
-      `${BASE_URL}/${conn_id}/profileresult/${profileresult_id}`
+        `${BASE_URL}/${conn_id}/profileresult/${profileresult_id}`
     );
     return response.data;
-  };
+};
+
+
+export const fetchLatestProfilingRun = async () => {
+    const response = await axios.get(`${BASE_URL}/latest-profiling-run`);
+    return response.data;
+}; 

@@ -284,3 +284,11 @@ class DashboardStats(BaseModel):
     table_groups: int
     profiling_runs: int
     runs: List[RunInfo]
+    
+    
+class LatestProfilingRunDashboardData(BaseModel):
+    latest_run: ProfilingRunOut
+    profile_results: List[ProfileResultOut]
+
+    class Config:
+        orm_mode = True

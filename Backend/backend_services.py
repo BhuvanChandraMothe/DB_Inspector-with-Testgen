@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional, Union
 from uuid import uuid4, UUID
 import base64
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, desc
 from fastapi import Depends
 from sqlalchemy.orm import sessionmaker, Session # Import Session
 from fastapi import HTTPException
@@ -15,7 +15,8 @@ from Backend.models.models import (
     DBConnectionOut, # Use DBConnectionOut for output
     TableGroupOut, # Use TableGroupOut for output
     ProfileResultOut,
-    ProfilingRunOut
+    ProfilingRunOut,
+    LatestProfilingRunDashboardData
 )
 from Backend.db.database import TableGroupModel, Connection, ProfileResultModel, ProfilingRunModel
 from testgen.common.encrypt import EncryptText, DecryptText
@@ -489,3 +490,25 @@ def get_all_profiling_runs_service(db: Session):
     except Exception as e:
         print(f"Error getting dashboard stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to get dashboard stats")
+    
+def get_latest_profiling_run_dashboard_data_service(db: Session) -> LatestProfilingRunDashboardData:
+    latest_run = (
+        db.query(ProfilingRunModel)
+        .order_by(desc(ProfilingRunModel.profiling_starttime))
+        .first()
+    )
+
+    if not latest_run:
+        raise HTTPException(status_code=404, detail="No profiling run found")
+
+    # Fetch profile results linked to the latest run
+    results = (
+        db.query(ProfileResultModel)
+        .filter(ProfileResultModel.profile_run_id == latest_run.id)
+        .all()
+    )
+
+    return LatestProfilingRunDashboardData(
+        latest_run=latest_run,
+        profile_results=results
+    )

@@ -31,7 +31,8 @@ from Backend.backend_services import(
     trigger_profiling_service,
     get_profile_results_by_run_id,
     get_profiling_runs_by_connection,
-    get_all_profiling_runs_service
+    get_all_profiling_runs_service,
+    get_latest_profiling_run_dashboard_data_service
 )
 from Backend.models.models import (
     DBConnectionCreate,
@@ -46,7 +47,8 @@ from Backend.models.models import (
     ProfilingRunOut,
     TriggerProfilingRequest,
     RunInfo,
-    DashboardStats
+    DashboardStats,
+    LatestProfilingRunDashboardData
     )
 from pydantic import BaseModel
 from typing import List, Dict, Any # Import Dict and Any for the profiling response
@@ -139,3 +141,7 @@ def get_profile_results_route(conn_id: int, profileresult_id: UUID, db: Session 
 @app.get("/home", response_model=DashboardStats)
 def get_all_profiling_runs(db: Session = Depends(get_db)):
     return get_all_profiling_runs_service(db)
+
+@app.get("/latest-profiling-run", response_model=LatestProfilingRunDashboardData)
+def get_latest_profiling_run_dashboard_data(db: Session = Depends(get_db)):
+    return get_latest_profiling_run_dashboard_data_service(db)
