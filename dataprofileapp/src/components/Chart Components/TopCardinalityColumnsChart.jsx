@@ -134,7 +134,7 @@ const TopCardinalityColumnsChart = ({ id, index, displayedProfileResults, onChar
                 onClick={() => onChartClick(id)} // Single click to open full view
                 onMouseEnter={handlePopoverOpen} // Hover to open overview popover
                 onMouseLeave={handlePopoverClose} // Mouse leave to close popover
-                sx={{ cursor: 'pointer', height: '100%' }}
+                sx={{ cursor: 'pointer', height: '100%',width:'390px' }}
             >
                 <Paper sx={{ p: 2, height: '100%', minHeight: 350 }}>
                     <Typography variant="h6" gutterBottom>Top {MAX_TOP} Columns by Cardinality %</Typography>

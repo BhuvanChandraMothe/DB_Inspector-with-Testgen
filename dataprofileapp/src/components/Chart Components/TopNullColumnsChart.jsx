@@ -129,7 +129,7 @@ const TopNullColumnsChart = ({ id, index, displayedProfileResults, onChartClick,
 
 
     return (
-        <Grid item xs={12} md={6} ref={ref} style={{ opacity: isDragging ? 0.5 : 1, cursor: 'move' }}> {/* Attach ref and style for drag */}
+        <Grid item xs={12} md={6} ref={ref} style={{ opacity: isDragging ? 0.5 : 1, cursor: 'move',width:'390px' }}> {/* Attach ref and style for drag */}
             <Box
                 onClick={() => onChartClick(id)} // Single click to open full view
                 onMouseEnter={handlePopoverOpen} // Hover to open overview popover

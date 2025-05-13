@@ -535,8 +535,6 @@ const DBConnection = ({ onConnectionSaved }) => {
 // Moved getConnectionById here for use in fetchOverview.
 const getConnectionById = async (id) => {
   try {
-    // Assuming the API endpoint for getting by ID uses the BIGINT connection_id
-    // If it uses the UUID 'id', change the endpoint path accordingly.
     const response = await axios.get(`${baseURL}/connections/${id}`);
     return response.data; // This will be the DBConnectionOut object
   } catch (error) {

@@ -115,9 +115,9 @@ const FullChartModal = ({ open, onClose, chartType, chartData, displayedRunSumma
                 return (
                     <ResponsiveContainer width="100%" height={400}> {/* Larger height for full view */}
                         <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                            <XAxis dataKey="name" stroke={theme.palette.text.primary} />
-                            <YAxis stroke={theme.palette.text.primary} />
-                            <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: 'none' }} />
+                            <XAxis dataKey="name" stroke={'#fff'} />
+                            <YAxis stroke={'#fff'} />
+                            <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, color:'#fff', border: 'none' }} />
                             <Bar dataKey="value" fill={theme.palette.primary.main} />
                         </BarChart>
                     </ResponsiveContainer>
@@ -138,7 +138,7 @@ const FullChartModal = ({ open, onClose, chartType, chartData, displayedRunSumma
                                     <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
                                 ))}
                             </Pie>
-                             <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: 'none' }} />
+                             <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, color:'#fff', border: 'none' }} />
                              <Legend />
                         </PieChart>
                     </ResponsiveContainer>
@@ -159,7 +159,7 @@ const FullChartModal = ({ open, onClose, chartType, chartData, displayedRunSumma
                                     <Cell key={`type-cell-${index}`} fill={colors[index % colors.length]} />
                                 ))}
                             </Pie>
-                            <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: 'none' }} />
+                            <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, color:'#fff', border: 'none' }} />
                             <Legend />
                         </PieChart>
                     </ResponsiveContainer>
@@ -180,7 +180,7 @@ const FullChartModal = ({ open, onClose, chartType, chartData, displayedRunSumma
                                     <Cell key={`pii-cell-${index}`} fill={colors[index % colors.length]} />
                                 ))}
                             </Pie>
-                            <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: 'none' }} />
+                            <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, color:'#fff', border: 'none' }} />
                             <Legend />
                         </PieChart>
                     </ResponsiveContainer>
@@ -189,9 +189,9 @@ const FullChartModal = ({ open, onClose, chartType, chartData, displayedRunSumma
                 return (
                     <ResponsiveContainer width="100%" height={500}> {/* Adjust height for potentially more bars */}
                         <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 120 }}> {/* Increased bottom margin */}
-                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={120} interval={0} stroke={theme.palette.text.primary} /> {/* Increased height */}
-                            <YAxis stroke={theme.palette.text.primary} label={{ value: 'Null %', angle: -90, position: 'insideLeft', fill: theme.palette.text.primary }} />
-                            <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: 'none' }} />
+                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={120} interval={0} stroke={'#fff'} /> {/* Increased height */}
+                            <YAxis stroke={'#fff'} label={{ value: 'Null %', angle: -90, position: 'insideLeft', fill: '#fff' }} />
+                            <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, color:'#fff', border: 'none' }} />
                             <Bar dataKey="percent" fill={theme.palette.error.main} />
                         </BarChart>
                     </ResponsiveContainer>
@@ -200,9 +200,9 @@ const FullChartModal = ({ open, onClose, chartType, chartData, displayedRunSumma
                  return (
                     <ResponsiveContainer width="100%" height={500}> {/* Adjust height for potentially more bars */}
                         <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 120 }}> {/* Increased bottom margin */}
-                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={120} interval={0} stroke={theme.palette.text.primary} /> {/* Increased height */}
-                            <YAxis stroke={theme.palette.text.primary} label={{ value: 'Cardinality %', angle: -90, position: 'insideLeft', fill: theme.palette.text.primary }} />
-                            <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: 'none' }} />
+                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={120} interval={0} stroke={'#fff'} /> {/* Increased height */}
+                            <YAxis stroke={'#fff'} label={{ value: 'Cardinality %', angle: -90, position: 'insideLeft', fill: '#fff' }} />
+                            <RechartsTooltip contentStyle={{ backgroundColor: theme.palette.background.paper, color:'#fff', border: 'none' }} />
                             <Bar dataKey="percent" fill={theme.palette.info.main} />
                         </BarChart>
                     </ResponsiveContainer>
@@ -244,22 +244,22 @@ const FullChartModal = ({ open, onClose, chartType, chartData, displayedRunSumma
                 justifyContent: "space-between",
                 alignItems: "center",
                 padding: theme.spacing(2, 3),
-                borderBottom: `1px solid ${theme.palette.divider}`,
+                borderBottom: `1px solid ${'#fff'}`,
             }}>
-                <Typography variant="h6" component="div">
+                <Typography variant="h6" component="div" color='#fff'>
                     {getChartTitle(chartType)}
                 </Typography>
                 <IconButton
                     aria-label="close"
                     onClick={onClose}
-                    sx={{ color: theme.palette.text.secondary }}
+                    sx={{ color: '#fff' }}
                 >
                     <CloseIcon />
                 </IconButton>
             </DialogTitle>
 
             <DialogContent dividers sx={{ padding: theme.spacing(3) }}>
-                {/* Render the selected chart */}
+               
                 {renderChart(chartType, data)}
             </DialogContent>
         </Dialog>

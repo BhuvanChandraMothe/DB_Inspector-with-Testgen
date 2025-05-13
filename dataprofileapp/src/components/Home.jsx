@@ -1,260 +1,5 @@
-// import React, { useEffect, useState } from "react";
-// import {
-//   Box,
-//   Typography,
-//   Grid,
-//   Paper,
-//   CircularProgress,
-//   Chip,
-//   Button,
-// } from "@mui/material";
-// import { DataGrid } from "@mui/x-data-grid";
-// import {
-//   LineChart,
-//   Line,
-//   XAxis,
-//   YAxis,
-//   Tooltip,
-//   ResponsiveContainer,
-// } from "recharts";
-// import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-// import { fetchDashboardSummary, fetchProfileResult } from "../api/dbapi";
-// import ProfilingResultsTable from "./ProfilingResultsTable";
-// import NewProfilingRunDialog from "./NewProfilingRUnDialog";
-// import ConnectionsDialog from "./ConnectionDialog";
-
-
-
-// const DashboardCard = ({ title, value, subtitle, chartData, onClick }) => (
-//   <Paper
-//     elevation={3}
-//     sx={{
-//       p: 3,
-//       borderRadius: 4,
-//       height: 150,
-//       cursor: onClick ? "pointer" : "default",
-//       "&:hover": onClick ? { boxShadow: 6 } : undefined,
-//     }}
-//     onClick={onClick}
-//   >
-//     <Grid container spacing={2} alignItems="center" justifyContent="space-between">
-//       <Grid item xs={6}>
-//         <Typography variant="subtitle2" color="text.secondary">
-//           {title}
-//         </Typography>
-//         <Typography variant="h5" fontWeight="bold">
-//           {value}
-//         </Typography>
-//         {subtitle && (
-//           <Typography variant="caption" color="text.secondary">
-//             {subtitle}
-//           </Typography>
-//         )}
-//       </Grid>
-//       <Grid item xs={6}>
-//         {chartData && (
-//           <ResponsiveContainer width="100%" height={60}>
-//             <LineChart data={chartData}>
-//               <Line
-//                 type="monotone"
-//                 dataKey="value"
-//                 stroke="#1976d2"
-//                 strokeWidth={2}
-//                 dot={false}
-//               />
-//               <XAxis dataKey="date" hide />
-//               <YAxis hide />
-//               <Tooltip />
-//             </LineChart>
-//           </ResponsiveContainer>
-//         )}
-//       </Grid>
-//     </Grid>
-//   </Paper>
-// );
-
-// const Home = () => {
-//   const [rows, setRows] = useState([]);
-//   const [summary, setSummary] = useState({
-//     connections: 0,
-//     table_groups: 0,
-//     profiling_runs: 0,
-//   });
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState(false);
-//   const [profilingResults, setProfilingResults] = useState(null);
-//   const [showResultsTable, setShowResultsTable] = useState(false);
-//   const [isNewRunDialogOpen, setIsNewRunDialogOpen] = useState(false);
-//   const [isConnectionDialogOpen, setIsConnectionDialogOpen] = useState(false); // ✅
-
-//   const loadDashboardData = async () => {
-//     try {
-//       const data = await fetchDashboardSummary();
-//       const runs = data.runs.map((run, index) => ({
-//         id: index + 1,
-//         connection_id: run.connection_id,
-//         profiling_id: run.profiling_id,
-//         status: run.status,
-//         table_groups_id: run.table_groups_id,
-//         created_at: new Date(run.created_at).toLocaleString(),
-//       }));
-
-//       setSummary({
-//         connections: data.connections,
-//         table_groups: data.table_groups,
-//         profiling_runs: data.profiling_runs,
-//       });
-//       setRows(runs);
-//     } catch (err) {
-//       console.error("Dashboard fetch failed", err);
-//       setError(true);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     loadDashboardData();
-//   }, []);
-
-//   const handleProfilingClick = async (row) => {
-//     try {
-//       const data = await fetchProfileResult(row.connection_id, row.profiling_id);
-//       setProfilingResults(data);
-//       setShowResultsTable(true);
-//     } catch (error) {
-//       console.error("Failed to fetch profiling result", error);
-//     }
-//   };
-
-//   const handleOpenNewRunDialog = () => setIsNewRunDialogOpen(true);
-//   const handleCloseNewRunDialog = () => setIsNewRunDialogOpen(false);
-//   const handleNewRunSuccess = () => {
-//     handleCloseNewRunDialog();
-//     loadDashboardData();
-//   };
-
-//   const handleOpenConnectionDialog = () => setIsConnectionDialogOpen(true);
-//   const handleCloseConnectionDialog = () => setIsConnectionDialogOpen(false);
-
-//   const columns = [
-//     { field: "id", headerName: "ID", width: 90 },
-//     { field: "connection_id", headerName: "Connection ID", flex: 1 },
-//     { field: "profiling_id", headerName: "Profiling ID", flex: 1 },
-//     { field: "table_groups_id", headerName: "Table Groups ID", flex: 1 },
-//     {
-//       field: "status",
-//       headerName: "Status",
-//       flex: 1,
-//       renderCell: (params) => {
-//         const status = params.value?.toUpperCase();
-//         let color = "warning";
-//         if (status === "COMPLETE") color = "success";
-//         else if (status === "ERROR") color = "error";
-//         return <Chip label={status} color={color} variant="outlined" />;
-//       },
-//     },
-//     { field: "created_at", headerName: "Created At", flex: 1 },
-//   ];
-
-//   const dummyChartData = [
-//     { date: "Day 1", value: 1 },
-//     { date: "Day 2", value: 2 },
-//     { date: "Day 3", value: 3 },
-//     { date: "Day 4", value: 2 },
-//     { date: "Day 5", value: 4 },
-//   ];
-
-//   return (
-//     <Box sx={{ p: 4 }}>
-//       {/* Top Summary Cards */}
-//       <Grid container spacing={3} mb={4}>
-//         <Grid item xs={12} md={4}>
-//           <DashboardCard
-//             title="Connections"
-//             value={summary.connections}
-//             subtitle="Active"
-//             chartData={dummyChartData}
-//             onClick={handleOpenConnectionDialog} 
-//           />
-//         </Grid>
-//         <Grid item xs={12} md={4}>
-//           <DashboardCard
-//             title="Table Groups"
-//             value={summary.table_groups}
-//             subtitle="Linked"
-//           />
-//         </Grid>
-//         <Grid item xs={12} md={4}>
-//           <DashboardCard
-//             title="Profiling Runs"
-//             value={summary.profiling_runs}
-//             subtitle="Total Executed"
-//           />
-//         </Grid>
-//       </Grid>
-
-//       {/* Profiling Runs Table Section */}
-//       <Paper elevation={3} sx={{ p: 3, borderRadius: 4 }}>
-//         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-//           <Typography variant="h6">Profiling Run Records</Typography>
-//           <Button
-//             variant="outlined"
-//             startIcon={<AddCircleOutlineIcon />}
-//             onClick={handleOpenNewRunDialog}
-//           >
-//             New Run
-//           </Button>
-//         </Box>
-
-//         {loading ? (
-//           <Box display="flex" justifyContent="center" py={5}>
-//             <CircularProgress />
-//           </Box>
-//         ) : error ? (
-//           <Typography color="error">Error loading data.</Typography>
-//         ) : (
-//           <div style={{ height: 500, width: "100%" }}>
-//             <DataGrid
-//               rows={rows}
-//               columns={columns}
-//               pageSize={10}
-//               rowsPerPageOptions={[10]}
-//               disableRowSelectionOnClick
-//               onRowClick={(params) => handleProfilingClick(params.row)}
-//             />
-//           </div>
-//         )}
-//       </Paper>
-
-//       {/* Profiling Results Section */}
-//       {showResultsTable && profilingResults && (
-//         <Box mt={4}>
-//           <Typography variant="h6" gutterBottom>
-//             Profiling Results
-//           </Typography>
-//           <ProfilingResultsTable profilingData={profilingResults} />
-//         </Box>
-//       )}
-
-//       {/* Dialogs */}
-//       <NewProfilingRunDialog
-//         open={isNewRunDialogOpen}
-//         onClose={handleCloseNewRunDialog}
-//         onRunSuccess={handleNewRunSuccess}
-//       />
-//       <ConnectionsDialog
-//         open={isConnectionDialogOpen}
-//         onClose={handleCloseConnectionDialog}
-//       />
-//     </Box>
-//   );
-// };
-
-// export default Home;
 
 import React, { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import {
     Box,
     Typography,
@@ -274,43 +19,31 @@ import { DataGrid } from "@mui/x-data-grid";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 // Import necessary APIs
 import { fetchDashboardSummary, fetchProfileResult } from "../api/dbapi";
-import ProfilingResultsTable from "./ProfilingResultsTable"; 
-import NewProfilingRunDialog from "./NewProfilingRUnDialog"; 
-import ConnectionsDialog from "./ConnectionDialog"; 
+import ProfilingResultsTable from "./ProfilingResultsTable"; // Assuming this component is available
+
+// Import Dialogs
+import NewProfilingRunDialog from "./NewProfilingRUnDialog"; // Assuming this component is available
+import ConnectionsDialog from "./ConnectionDialog"; // Assuming this component is available
+
+// Import the new chart components from the specified path
 import AnomalySummaryChart from "./Chart Components/AnamolySummaryChart";
 import DataCompletenessChart from "./Chart Components/DataCompletenessChart";
 import ColumnTypeDistributionChart from "./Chart Components/ColumnTypeDistributionChart";
 import PIIFlagDistributionChart from "./Chart Components/PIIFlagDistributionChart";
 import TopNullColumnsChart from "./Chart Components/TopNullColumnsChart";
 import TopCardinalityColumnsChart from "./Chart Components/TopCardinalityColumnsChart";
-import FullChartModal from "./Chart Components/FullChartModal"; 
+import FullChartModal from "./Chart Components/FullChartModal"; // Import the new full chart modal
+
+// Import React DnD components
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import update from 'immutability-helper'; 
+import update from 'immutability-helper'; // Helper for immutability-helper
+
+// Import useNavigate hook
+import { useNavigate } from "react-router-dom";
 
 
 const MAX_TOP = 5; // Number of top/bottom columns to display (can be passed as prop if needed)
-
-// Define columns for the DataGrid outside the component
-const columns = [
-    { field: "id", headerName: "ID", width: 90 },
-    { field: "connection_id", headerName: "Connection ID", flex: 1 },
-    { field: "profiling_id", headerName: "Profiling ID", flex: 1 },
-    { field: "table_groups_id", headerName: "Table Groups ID", flex: 1 },
-    {
-        field: "status",
-        headerName: "Status",
-        flex: 1,
-        renderCell: (params) => {
-            const status = params.value?.toUpperCase();
-            let color = "warning";
-            if (status === "COMPLETE") color = "success";
-            else if (status === "ERROR") color = "error";
-            return <Chip label={status} color={color} variant="outlined" />;
-        },
-    },
-    { field: "created_at", headerName: "Created At", flex: 1 },
-];
 
 
 // Dashboard Card component (kept from previous version)
@@ -367,6 +100,31 @@ const Home = () => {
         theme.palette.success.main,  // Use theme success color
         theme.palette.grey[500]      // Use a grey shade
     ];
+
+    // Define columns for the DataGrid *inside* the component to access theme
+    const columns = [
+        { field: "id", headerName: "ID", width: 90 },
+        { field: "connection_id", headerName: "Connection ID", flex: 1 },
+        { field: "profiling_id", headerName: "Profiling ID", flex: 1 },
+        { field: "table_groups_id", headerName: "Table Groups ID", flex: 1 },
+        {
+            field: "status",
+            headerName: "Status",
+            flex: 1,
+            renderCell: (params) => {
+                const status = params.value?.toUpperCase();
+                // Access theme here within the component's scope
+                const chipColor = (status) => {
+                     if (status === "COMPLETE") return theme.palette.success.main;
+                     if (status === "ERROR") return theme.palette.error.main;
+                     return theme.palette.warning.main; // Default to warning
+                };
+                return <Chip label={status} sx={{ color: chipColor(status), borderColor: chipColor(status) }} variant="outlined" size="small" />;
+            },
+        },
+        { field: "created_at", headerName: "Created At", flex: 1 },
+    ];
+
 
     // State for Dashboard Summary and Run History Table
     const [rows, setRows] = useState([]); // Full list of run summaries for the table
@@ -747,16 +505,27 @@ const Home = () => {
 
 
                 {/* Profiling Runs Table Section */}
-                <Paper elevation={3} sx={{ p: 3, borderRadius: 4, mt: 4 }}> {/* Added margin top */}
+                <Paper
+                    elevation={3}
+                    sx={{
+                        p: 3,
+                        borderRadius: 4,
+                        mt: 4,
+                        bgcolor: '#424242', // Set the background color here
+                        color: '#e0e0e0', // Set text color for the Paper content
+                    }}
+                >
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                        <Typography variant="h6">Profiling Run Records</Typography>
+                        {/* Typography color is now inherited from Paper or explicitly set */}
+                        <Typography variant="h6" sx={{ color: '#e0e0e0' }}>Profiling Run Records</Typography>
                         <Box>
                              {/* Toggle History Table Button */}
+                            {/* Buttons should have specific styles for dark background */}
                             <Button
                                 variant="outlined"
                                 onClick={handleToggleHistoryTable}
                                 startIcon={isHistoryTableExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
-                                sx={{ mr: 1 }} // Add margin to the right
+                                sx={{ mr: 1, color: '#e0e0e0', borderColor: '#e0e0e0' }} // Adjust button colors for white text/border
                             >
                                 {isHistoryTableExpanded ? 'Hide History' : 'Show History'}
                             </Button>
@@ -765,6 +534,7 @@ const Home = () => {
                                 variant="outlined"
                                 startIcon={<AddCircleOutlineIcon />}
                                 onClick={handleOpenNewRunDialog}
+                                sx={{ color: '#e0e0e0', borderColor: '#e0e0e0' }} // Adjust button colors for white text/border
                             >
                                 New Run
                             </Button>
@@ -775,60 +545,63 @@ const Home = () => {
                     <Collapse in={isHistoryTableExpanded}>
                         {/* Loading and error handling for this section is covered by the main loading/error state */}
                         {rows.length > 0 ? ( // Only render DataGrid if there are rows
-                            <div style={{ height: 500, width: "100%" }}>
+                            <div style={{ height: 500, width: "100%", backgroundColor: '#424242' }}>
+
                                 <DataGrid
                                     rows={rows}
-                                    columns={columns} // columns is now defined outside and available
+                                    columns={columns} // columns is now defined inside and available
                                     pageSize={10}
                                     rowsPerPageOptions={[10]}
                                     disableRowSelectionOnClick
                                     onRowClick={handleProfilingRowClick} // Use the handler to update charts and show detailed table
-                                    sx={{ // Add dark mode styles for DataGrid
-                                        '& .MuiDataGrid-root': {
-                                            border: 'none',
-                                        },
+                                    sx={{
+                                        border: 'none',
+                                        color: '#e0e0e0',
+                                        backgroundColor: '#424242', // Set DataGrid base background
+                                    
                                         '& .MuiDataGrid-cell': {
-                                            borderColor: theme.palette.divider,
-                                            color: theme.palette.text.primary,
+                                          color: '#e0e0e0',
+                                          borderColor: '#616161', // subtle borders
+                                          backgroundColor: '#424242', // match overall bg
                                         },
-                                        '& .MuiDataGrid-columnsContainer': {
-                                            borderColor: theme.palette.divider,
-                                            bgcolor: theme.palette.background.paper, // Header background
-                                            color: theme.palette.text.primary,
+                                    
+                                        '& .MuiDataGrid-columnHeaders': {
+                                          backgroundColor: '#505050',
+                                          color: '#e0e0e0',
+                                          borderBottom: '1px solid #616161',
                                         },
-                                         '& .MuiDataGrid-columnHeaders': {
-                                             bgcolor: theme.palette.background.paper, // Ensure header background is consistent
-                                         },
+                                    
                                         '& .MuiDataGrid-columnHeaderTitle': {
-                                            fontWeight: 'bold',
+                                          fontWeight: 'bold',
                                         },
+                                    
                                         '& .MuiDataGrid-row': {
-                                            '&:nth-of-type(odd)': {
-                                                bgcolor: theme.palette.action.hover, // Subtle striping
-                                            },
-                                            '&:hover': {
-                                                bgcolor: theme.palette.action.selected, // Hover color
-                                                cursor: 'pointer',
-                                            },
+                                          backgroundColor: '#424242',
                                         },
+                                    
+                                        '& .MuiDataGrid-row:hover': {
+                                          backgroundColor: '#535353',
+                                        },
+                                    
                                         '& .MuiDataGrid-footerContainer': {
-                                            borderColor: theme.palette.divider,
-                                            bgcolor: theme.palette.background.paper, // Footer background
-                                            color: theme.palette.text.primary,
+                                          backgroundColor: '#424242',
+                                          borderTop: '1px solid #616161',
                                         },
-                                         '& .MuiTablePagination-root': {
-                                             color: theme.palette.text.primary, // Pagination text color
-                                         },
-                                         '& .MuiSvgIcon-root': {
-                                             color: theme.palette.action.active, // Pagination icon color
-                                         }
-                                    }}
-                                />
+                                    
+                                        '& .MuiDataGrid-menuIconButton': {
+                                          color: '#e0e0e0',
+                                        },
+                                    
+                                        '& .MuiDataGrid-sortIcon': {
+                                          color: '#e0e0e0',
+                                        },
+                                      }}
+                                    />
                             </div>
                         ) : (
                             // Message when no run history is available
                              <Box textAlign="center" py={5}>
-                                <Typography variant="body1" color="text.secondary">No profiling run history available.</Typography>
+                                <Typography variant="body1" sx={{ color: '#e0e0e0' }}>No profiling run history available.</Typography>
                              </Box>
                         )}
                     </Collapse>
@@ -837,7 +610,11 @@ const Home = () => {
                     {/* View Full History Button */}
                     {rows.length > 0 && ( // Only show button if there's history
                          <Box mt={2} textAlign="center">
-                            <Button variant="outlined" onClick={handleViewFullHistory}>
+                            <Button
+                                variant="outlined"
+                                onClick={handleViewFullHistory}
+                                sx={{ color: '#e0e0e0', borderColor: '#e0e0e0' }} // Adjust button colors for white text/border
+                            >
                                 View Full History Page
                             </Button>
                          </Box>
@@ -848,10 +625,12 @@ const Home = () => {
                 {/* Detailed Profiling Results Section (appears when a history row is clicked) */}
                 {showResultsTable && profilingResultsDetailed && (
                     <Box mt={4}>
-                        <Typography variant="h6" gutterBottom>
+                        {/* Adjusted Typography color for dark background */}
+                        <Typography variant="h6" gutterBottom sx={{ color: theme.palette.text.primary }}>
                             Detailed Profiling Results for Run {displayedRunSummary?.id}
                         </Typography>
                         {/* Assuming ProfilingResultsTable component is available and accepts profilingData prop */}
+                        {/* ProfilingResultsTable already has its own dark mode styling */}
                         <ProfilingResultsTable profilingData={profilingResultsDetailed} />
                     </Box>
                 )}

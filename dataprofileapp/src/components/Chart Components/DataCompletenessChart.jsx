@@ -103,10 +103,6 @@ const DataCompletenessChart = ({ id, index, displayedRunSummary, onChartClick, m
             // Time to actually perform the action
             moveCard(dragIndex, hoverIndex);
 
-            // Note: we're mutating the monitor item here!
-            // Generally it's better to avoid mutations,
-            // but it's useful here to avoid a costly search
-            // of the array index by id.
             item.index = hoverIndex;
         },
     });

@@ -21,6 +21,7 @@ import DBConnection from './components/DBconnection';
 import DBConnectionView from './components/DBConnectionView';
 // Import the API functions needed
 import { getAllConnections, deleteConnection } from './api/dbapi';
+import HomepageLayout from './components/HomepageLayout';
 
 const drawerWidth = 240;
 
@@ -260,6 +261,14 @@ const App = () => {
                   />
                 </ListItemButton>
               </ListItem>
+              <ButtonBase
+              component={Link} // Use React Router Link
+              to="/newhome" // Navigate to home
+              className='link' // Apply custom styles if needed
+              sx={{ textDecoration: 'none', color: 'white', width: 'fit-content' }}
+            >
+              New home
+            </ButtonBase>
             </List>
           </AccordionDetails>
         </Accordion>
@@ -274,6 +283,7 @@ const App = () => {
           <Route path="/addnewdatabase" element={<DBConnection onConnectionSaved={handleConnectionSaved} />} />
           {/* DBConnectionView page for viewing/editing a specific connection */}
           <Route path="/connection/:connection_id" element={<DBConnectionView />} />
+          <Route path="/newhome" element={<HomepageLayout />} />
         </Routes>
       </Main>
 

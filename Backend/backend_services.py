@@ -52,13 +52,25 @@ def get_db():
 # API logic functions
  
 #----------------------------test connection-----------------------------------
+
+#Thgis function makes sure that the password is decrypted only if its encrypted
+def is_encrypted(password: str) -> bool:
+    try:
+        decoded = base64.b64decode(password)
+        # Encrypted string must be longer than just IV (16 bytes)
+        return len(decoded) > 16
+    except Exception:
+        return False
+    
 # Uses TestConnectionRequest Pydantic model for input
 def test_connection_service(conn: TestConnectionRequest):
     try:
         con = ConnectionsPage()
         password = conn.password
-        if any(c in password for c in ['/', '+', '=']) and len(password) > 30:
+        #This is to check if the password is actually encrypted or not and based on this the logic will be defined
+        if is_encrypted(password):
             password = DecryptText(password)
+
         # Maps fields from Pydantic model to the dictionary expected by ConnectionsPage
         connection_dict = {
             "sql_flavor": conn.sql_flavor.lower(),
