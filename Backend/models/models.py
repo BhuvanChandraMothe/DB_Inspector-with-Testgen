@@ -6,10 +6,10 @@ from datetime import datetime
 SUPPORTED_DB_TYPES = Literal[
     "PostgreSQL",
     "MySQL",
-    "SQLite",
+    "MSSQL",
     "Oracle",
     "SQL Server",
-    "MongoDB",
+    "MYSQL",
     "Snowflake",
     "Redshift"
 ]
@@ -77,7 +77,7 @@ class DBConnectionOut(BaseModel):
     project_port: str
     project_user: str
     project_pw_encrypted: str 
-    project_db: str
+    project_db: str 
     max_threads: Optional[int] = None
     max_query_chars: Optional[int] = None
     url: Optional[str] = None

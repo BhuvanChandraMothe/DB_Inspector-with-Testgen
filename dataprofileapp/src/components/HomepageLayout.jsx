@@ -1,37 +1,48 @@
-import React, { useState, useEffect, useMemo } from 'react'; // Import useMemo
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+// Remove axios import as API calls are in dbapi file
+// import axios from 'axios';
+
+// Import your API functions from your dbapi file
+import { getAllConnections, testConnection, createConnection } from '../api/dbapi'; // <--- Import testConnection and createConnection
+
+// Import your SVG icon files
+// Assuming these paths are correct relative to this component file
+import postgresIcon from '../assets/postgres.svg';
+import mysqlIcon from '../assets/mssql.svg';
+import sqliteIcon from '../assets/mssql.svg'; // Note: using mssql.svg for sqlite
+import oracleIcon from '../assets/oracle.svg';
+import sqlserverIcon from '../assets/mssql.svg'; // Note: using mssql.svg for sqlserver
+import mongodbIcon from '../assets/postgres.svg'; // Note: using postgres.svg for mongodb
+import snowflakeIcon from '../assets/snowflake.svg';
+import redshiftIcon from '../assets/redshift .svg'; // Corrected potential typo in filename
+import defaultDatabaseIcon from '../assets/postgres.svg'; // Uncommented as it's used
+
 import {
     CssBaseline,
     Paper,
     Typography,
     Button,
     IconButton,
-    TextField,
+    // Remove TextField, Grid, Box, FormControl, InputLabel, Select, MenuItem, List, ListItem, ListItemText, ListItemIcon
+    // as these are now used within the new components
     Grid,
-    Box, 
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    List,
-    ListItem,
-    ListItemText,
-    ListItemIcon,
+    Box,
     Switch,
-    FormControlLabel,
     createTheme,
     ThemeProvider,
+    CircularProgress
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
-import DatabaseIcon from '@mui/icons-material/Storage'; // Placeholder icon
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'; // Connected Status
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'; // Not Connected Status
-import ArrowRightIcon from '@mui/icons-material/ArrowRight'; // Details arrow
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; // Expand icon
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'; // Collapse icon
-import OtherHousesIcon from '@mui/icons-material/OtherHouses'; // Placeholder for "Other Database"
-import WifiIcon from '@mui/icons-material/Wifi'; // Standard Wifi Icon
-import WifiOffIcon from '@mui/icons-material/WifiOff'; // Wifi Off Icon
+// Remove ArrowRightIcon, ExpandMoreIcon, ChevronRightIcon
+// as these are now used within the new components
+
+// Import the new components
+import AddConnectionForm from './Home componenets/AddConnectionForm'; // Assuming path
+import SchemaProfilingControls from './Home componenets/SchemaProfilingControls'; // Assuming path
+import DataSourcesTable from './Home componenets/DataSourcesTable'; // Assuming path
+import TestCasesList from './Home componenets/TestCasesList'; // Assuming path
 
 
 const getDesignTokens = (mode) => ({
@@ -39,66 +50,81 @@ const getDesignTokens = (mode) => ({
         mode,
         ...(mode === 'light'
             ? {
-                primary: {
-                    main: '#1976d2',
-                },
-                secondary: {
-                    main: '#dc004e',
-                },
-                background: {
-                    default: '#f0f2f5',
-                    paper: '#fff',
-                },
-                text: {
-                    primary: 'rgba(0, 0, 0, 0.87)',
-                    secondary: 'rgba(0, 0, 0, 0.6)',
-                },
-                 // Adjust status colors for light mode if needed
-                status: {
-                     connected: '#4caf50', // Green
-                     notConnected: '#f44336', // Red
-                     saliented: '#ff9800', // Orange
-                },
+                primary: { main: '#1976d2' },
+                secondary: { main: '#dc004e' },
+                background: { default: '#f0f2f5', paper: '#fff' },
+                text: { primary: 'rgba(0, 0, 0, 0.87)', secondary: 'rgba(0, 0, 0, 0.6)' },
+                status: { connected: '#4caf50', notConnected: '#f44336', saliented: '#ff9800' },
             }
-            : { // Dark Mode
-                primary: {
-                    main: '#90caf9',
-                },
-                secondary: {
-                    main: '#f48fb1',
-                },
-                background: {
-                    default: '#121212',
-                    paper: '#1e1e1e',
-                },
-                text: {
-                    primary: '#fff',
-                    secondary: 'rgba(255, 255, 255, 0.7)',
-                },
-                 // Adjust status colors for dark mode if needed
-                 status: {
-                     connected: '#81c784', // Light Green
-                     notConnected: '#e57373', // Light Red
-                     saliented: '#ffb74d', // Light Orange
-                 },
+            : {
+                primary: { main: '#90caf9' },
+                secondary: { main: '#f48fb1' },
+                background: { default: '#121212', paper: '#1e1e1e' },
+                text: { primary: '#fff', secondary: 'rgba(255, 255, 255, 0.7)' },
+                status: { connected: '#81c784', notConnected: '#e57373', saliented: '#ffb74d' },
             }),
     },
 });
 
-// Helper hook for theme creation
 const useMemoizedTheme = (mode) => useMemo(() => createTheme(getDesignTokens(mode)), [mode]);
+
+const DatabaseTypeImages = {
+    "PostgreSQL": postgresIcon,
+    "MySQL": mysqlIcon,
+    "SQLite": sqliteIcon, // Using mssql.svg as provided
+    "Oracle": oracleIcon,
+    "SQL Server": sqlserverIcon, // Using mssql.svg as provided
+    "MongoDB": mongodbIcon, // Using postgres.svg as provided
+    "Snowflake": snowflakeIcon,
+    "Redshift": redshiftIcon,
+    "default": defaultDatabaseIcon, // Fallback for unknown types (using postgres.svg as provided)
+};
+
+// Function to get the image source
+const getDatabaseImageSrc = (sqlFlavor) => {
+    return DatabaseTypeImages.hasOwnProperty(sqlFlavor) && DatabaseTypeImages[sqlFlavor] ? DatabaseTypeImages[sqlFlavor] : DatabaseTypeImages.default;
+};
 
 
 const HomepageLayout = () => {
-    const [mode, setMode] = useState(() => {
-        const storedMode = localStorage.getItem('themeMode');
-        // Default to 'dark' if no mode is stored or if stored mode is not 'light'
-        return storedMode === 'light' ? 'light' : 'dark';
-    });
+    const navigate = useNavigate();
+    const [mode, setMode] = useState(() => localStorage.getItem('themeMode') === 'light' ? 'light' : 'dark');
+    const [connections, setConnections] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // State to control visibility of the Add Connection form
+    const [showAddConnectionForm, setShowAddConnectionForm] = useState(false);
+
+    // State for Schema Profiling (example - you'll need more state here)
+    const [schemaProfilingData, setSchemaProfilingData] = useState({ connections: [], schemas: [], tables: [] }); // Example structure
+    const [testCasesData, setTestCasesData] = useState([]); // Example state for test cases
+
 
     useEffect(() => {
         localStorage.setItem('themeMode', mode);
     }, [mode]);
+
+    // Effect to fetch connections on mount
+    useEffect(() => {
+        const fetchConnections = async () => {
+            try {
+                setLoading(true);
+                const data = await getAllConnections();
+                setConnections(data);
+                // You might also want to update schemaProfilingData.connections here
+                setSchemaProfilingData(prevData => ({ ...prevData, connections: data }));
+                setError(null);
+            } catch (err) {
+                setError(err);
+                console.error("Failed to fetch connections:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchConnections();
+    }, []); // Empty dependency array means this runs once on mount
 
     const theme = useMemoizedTheme(mode);
 
@@ -106,346 +132,189 @@ const HomepageLayout = () => {
         setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
     };
 
-    // Placeholder Handlers for Buttons (to prevent errors)
-    const handleButtonClick = (buttonName) => {
-        console.log(`${buttonName} clicked`);
-        // Implement actual logic later (API call, dialog, navigation)
+    // Handlers for the Add Connection Form
+    const handleAddConnectionClick = () => {
+        setShowAddConnectionForm(true);
     };
 
-     const handleCloseCard = (cardName) => {
-         console.log(`Close button clicked for ${cardName}`);
-         // Implement logic to hide the card later if needed
+    const handleCloseAddConnectionForm = () => {
+        setShowAddConnectionForm(false);
+    };
+
+    const handleCreateConnection = async (formData) => {
+        console.log('Attempting to create connection with data:', formData);
+        try {
+            // Call the createConnection API function
+            const newConnection = await createConnection(formData);
+            console.log('Connection created successfully:', newConnection);
+            // Update the connections list by refetching or adding the new connection
+            const updatedConnections = await getAllConnections(); // Refetch all connections
+            setConnections(updatedConnections);
+            setSchemaProfilingData(prevData => ({ ...prevData, connections: updatedConnections })); // Update connections in schema profiling state
+            setShowAddConnectionForm(false); // Close the form on success
+            // Optionally show a success message to the user
+        } catch (err) {
+            console.error('Error creating connection:', err);
+            // Handle error (e.g., show an error message to the user)
+        }
+    };
+
+    const handleTestConnection = async (formData) => {
+        console.log('Attempting to test connection with data:', formData);
+        try {
+            // Call the testConnection API function
+            const testResult = await testConnection(formData);
+            console.log('Test connection result:', testResult);
+            // Show the test result to the user (e.g., in a dialog or alert)
+            alert(`Connection Test Result: ${testResult.status === 'success' ? 'Successful' : 'Failed'}\nMessage: ${testResult.message}`);
+        } catch (err) {
+            console.error('Error testing connection:', err);
+            // Handle error (e.g., show an error message)
+             alert(`Connection Test Failed: ${err.message}`);
+        }
+    };
+
+    // Handler for clicking a connection row in the Data Sources table
+    const handleConnectionRowClick = (connectionId) => {
+        console.log('Connection row clicked, navigating to details:', connectionId);
+        // Navigate to the detailed connection view page using the connection_id
+        navigate(`/connection/${connectionId}`);
+    };
+
+    // Handlers for Schema Profiling Controls
+    const handleSchemaProfilingCancel = () => {
+        console.log('Schema Profiling Cancel clicked');
+        // Implement cancel logic if needed
+    };
+
+    const handleSchemaProfilingTest = () => {
+        console.log('Schema Profiling Test Connection clicked');
+        // Implement test connection logic for profiling if different
+    };
+
+    const handleSchemaTableClick = (itemDetails) => {
+        console.log('Schema Table item clicked:', itemDetails);
+        // Implement logic for expanding or showing details for schema table items
+    };
+
+    // Handlers for Test Cases List
+     const handleAddTestCase = () => {
+         console.log('Add Test Case clicked');
+         // Implement logic to add a new test case (e.g., open a modal)
      };
 
-     const handleListItemClick = (itemDetails) => {
-         console.log('List item clicked:', itemDetails);
-         // Implement logic for navigating or showing details
-     };
-
-     const handleTableItemClick = (itemDetails) => {
-         console.log('Table item clicked:', itemDetails);
-         // Implement logic for expanding or showing details
+     const handleTestCaseClick = (itemDetails) => {
+         console.log('Test Case item clicked:', itemDetails);
+         // Implement logic for viewing/editing a test case
      };
 
 
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
-            <Box sx={{ p: 3, minHeight: '100vh', bgcolor: theme.palette.background.default }}> {/* Apply default background color */}
+            <Box sx={{ p: 3, minHeight: '100vh', bgcolor: theme.palette.background.default }}>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                    {/* Using a simple label for the switch */}
-                     <Typography variant="body2" color="text.primary" sx={{ mr: 1 }}>
-                         {mode === 'dark' ? 'Dark Mode' : 'Light Mode'}
-                     </Typography>
+                    <Typography variant="body2" color="text.primary" sx={{ mr: 1 }}>
+                        {mode === 'dark' ? 'Dark Mode' : 'Light Mode'}
+                    </Typography>
                     <Switch
-                        checked={mode === 'dark'} // Checked when in dark mode
+                        checked={mode === 'dark'}
                         onChange={handleThemeToggle}
-                        color="primary" // Use primary color for the switch
+                        color="primary"
                         inputProps={{ 'aria-label': 'theme toggle switch' }}
                     />
                 </Box>
 
-                {/* Main container for the cards using Flexbox for positioning */}
                 <Box
                     sx={{
                         display: 'flex',
-                        flexWrap: 'wrap', // Allow items to wrap to the next line
-                        gap: 3, // Space between cards
-                        justifyContent: 'center', // Center the cards horizontally
-                        // Adjust max-width if needed to control wrapping behavior
-                        maxWidth: 'lg', // Example: constrain the container width
-                        mx: 'auto', // Center the container if using maxWidth
+                        flexWrap: 'wrap',
+                        gap: 3,
+                        justifyContent: 'center',
+                        maxWidth: 'lg',
+                        mx: 'auto',
                     }}
                 >
-                    {/* Data Sources Card */}
-                    {/* Using Grid item for consistent padding/margin within the flex container */}
-                    <Grid item xs={12} sm={6} md={5} lg={4.5} // Adjust breakpoint widths to approximate proportions
-                          sx={{ flexGrow: 1, flexBasis: 'min(400px, 100%)' }} // Use flexBasis for preferred width
-                    >
-                        <Paper sx={{ p: 2, height: '100%' }}> {/* Ensure paper fills the item height */}
+                    {/* Data Sources Card - Use the new component */}
+                    <Grid item xs={12} sm={6} md={5} lg={4.5} sx={{ flexGrow: 1, flexBasis: 'min(400px, 100%)' }}>
+                        <Paper sx={{ p: 2, height: '100%' }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="h6">Data Sources</Typography>
-                                <Button variant="contained" startIcon={<AddIcon />} size="small"
-                                        onClick={() => handleButtonClick('Add Connection (Data Sources)')}
-                                >
+                                {/* Call the handler to show the form */}
+                                <Button variant="contained" startIcon={<AddIcon />} size="small" onClick={handleAddConnectionClick}>
                                     Add Connection
                                 </Button>
                             </Box>
-                             {/* Use Box for list items to have more control over layout */}
-                            <Box>
-                                {/* Header row simulation */}
-                                <Box sx={{ display: 'flex', borderBottom: `1px solid ${theme.palette.divider}`, pb: 0.5, mb: 0.5, color: theme.palette.text.secondary, fontSize: '0.8rem' }}>
-                                    <Box sx={{ width: '30%' }}>Name</Box>
-                                    <Box sx={{ width: '20%' }}>Type</Box>
-                                    <Box sx={{ width: '20%' }}>Status</Box>
-                                    <Box sx={{ width: '20%' }}>Connection Details</Box>
-                                    <Box sx={{ width: '10%', textAlign: 'right' }}></Box> {/* For arrow */}
-                                </Box>
-                                {/* Data Rows */}
-                                <Box sx={{ display: 'flex', alignItems: 'center', py: 0.5, borderBottom: `1px solid ${theme.palette.divider}`, cursor: 'pointer' }} onClick={() => handleListItemClick({ name: 'BigQuery' })}>
-                                    <Box sx={{ width: '30%', display: 'flex', alignItems: 'center' }}>
-                                        <ListItemIcon sx={{ minWidth: 30, color: theme.palette.primary.main }}><DatabaseIcon /></ListItemIcon> {/* Use theme color */}
-                                        <Typography variant="body2">BigQuery</Typography>
-                                    </Box>
-                                    <Box sx={{ width: '20%' }}><Typography variant="body2">Connected</Typography></Box>
-                                    <Box sx={{ width: '20%', display: 'flex', alignItems: 'center' }}>
-                                         <ListItemIcon sx={{ minWidth: 30, color: theme.palette.status.connected }}><WifiIcon fontSize="small" /></ListItemIcon>
-                                         <Typography variant="body2" color={theme.palette.status.connected}>Connected</Typography>
-                                    </Box>
-                                     <Box sx={{ width: '20%' }}><Typography variant="body2">Postgres</Typography></Box>
-                                    <Box sx={{ width: '10%', textAlign: 'right', color: theme.palette.text.secondary }}><ArrowRightIcon fontSize="small"/></Box>
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', py: 0.5, borderBottom: `1px solid ${theme.palette.divider}`, cursor: 'pointer' }} onClick={() => handleListItemClick({ name: 'Postgres' })}>
-                                     <Box sx={{ width: '30%', display: 'flex', alignItems: 'center' }}>
-                                        <ListItemIcon sx={{ minWidth: 30, color: theme.palette.primary.main }}><DatabaseIcon /></ListItemIcon>
-                                        <Typography variant="body2">Postgres</Typography>
-                                    </Box>
-                                     <Box sx={{ width: '20%' }}><Typography variant="body2">Not connected</Typography></Box>
-                                    <Box sx={{ width: '20%', display: 'flex', alignItems: 'center' }}>
-                                         <ListItemIcon sx={{ minWidth: 30, color: theme.palette.status.notConnected }}><WifiOffIcon fontSize="small" /></ListItemIcon>
-                                         <Typography variant="body2" color={theme.palette.status.notConnected}>Not connected</Typography>
-                                    </Box>
-                                     <Box sx={{ width: '20%' }}><Typography variant="body2">5432</Typography></Box>
-                                    <Box sx={{ width: '10%', textAlign: 'right', color: theme.palette.text.secondary }}><ArrowRightIcon fontSize="small"/></Box>
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', py: 0.5, borderBottom: `1px solid ${theme.palette.divider}`, cursor: 'pointer' }} onClick={() => handleListItemClick({ name: 'MySQL' })}>
-                                     <Box sx={{ width: '30%', display: 'flex', alignItems: 'center' }}>
-                                        <ListItemIcon sx={{ minWidth: 30, color: theme.palette.primary.main }}><DatabaseIcon /></ListItemIcon>
-                                        <Typography variant="body2">MySQL</Typography>
-                                    </Box>
-                                     <Box sx={{ width: '20%' }}><Typography variant="body2">Not connected</Typography></Box>
-                                    <Box sx={{ width: '20%', display: 'flex', alignItems: 'center' }}>
-                                         <ListItemIcon sx={{ minWidth: 30, color: theme.palette.status.notConnected }}><WifiOffIcon fontSize="small" /></ListItemIcon>
-                                         <Typography variant="body2" color={theme.palette.status.notConnected}>Not connected</Typography>
-                                    </Box>
-                                     <Box sx={{ width: '20%' }}><Typography variant="body2">sales_db</Typography></Box>
-                                    <Box sx={{ width: '10%', textAlign: 'right', color: theme.palette.text.secondary }}><ArrowRightIcon fontSize="small"/></Box>
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', py: 0.5, borderBottom: `1px solid ${theme.palette.divider}`, cursor: 'pointer' }} onClick={() => handleListItemClick({ name: 'SQL Server' })}>
-                                     <Box sx={{ width: '30%', display: 'flex', alignItems: 'center' }}>
-                                        <ListItemIcon sx={{ minWidth: 30, color: theme.palette.primary.main }}><DatabaseIcon /></ListItemIcon>
-                                        <Typography variant="body2">SQL Server</Typography>
-                                    </Box>
-                                     <Box sx={{ width: '20%' }}><Typography variant="body2">Not connected</Typography></Box>
-                                    <Box sx={{ width: '20%', display: 'flex', alignItems: 'center' }}>
-                                         <ListItemIcon sx={{ minWidth: 30, color: theme.palette.status.notConnected }}><WifiOffIcon fontSize="small" /></ListItemIcon>
-                                         <Typography variant="body2" color={theme.palette.status.notConnected}>Not connected</Typography>
-                                    </Box>
-                                     <Box sx={{ width: '20%' }}><Typography variant="body2">public</Typography></Box>
-                                    <Box sx={{ width: '10%', textAlign: 'right', color: theme.palette.text.secondary }}><ArrowRightIcon fontSize="small"/></Box>
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', py: 0.5, borderBottom: `1px solid ${theme.palette.divider}`, cursor: 'pointer' }} onClick={() => handleListItemClick({ name: 'Redshift' })}>
-                                     <Box sx={{ width: '30%', display: 'flex', alignItems: 'center' }}>
-                                        <ListItemIcon sx={{ minWidth: 30, color: theme.palette.primary.main }}><DatabaseIcon /></ListItemIcon>
-                                        <Typography variant="body2">Redshift</Typography>
-                                    </Box>
-                                     <Box sx={{ width: '20%' }}><Typography variant="body2">Saliented</Typography></Box>
-                                    <Box sx={{ width: '20%', display: 'flex', alignItems: 'center' }}>
-                                         <ListItemIcon sx={{ minWidth: 30, color: theme.palette.status.saliented }}><ErrorOutlineIcon fontSize="small" /></ListItemIcon> {/* Using ErrorOutline for Saliented as a placeholder */}
-                                         <Typography variant="body2" color={theme.palette.status.saliented}>Saliented</Typography>
-                                    </Box>
-                                     <Box sx={{ width: '20%' }}><Typography variant="body2">admin</Typography></Box>
-                                    <Box sx={{ width: '10%', textAlign: 'right', color: theme.palette.text.secondary }}><ArrowRightIcon fontSize="small"/></Box>
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', py: 0.5, cursor: 'pointer' }} onClick={() => handleListItemClick({ name: 'Other Database' })}>
-                                    <Box sx={{ width: '30%', display: 'flex', alignItems: 'center' }}>
-                                        <ListItemIcon sx={{ minWidth: 30, color: theme.palette.primary.main }}><OtherHousesIcon /></ListItemIcon>
-                                        <Typography variant="body2">Other Database</Typography>
-                                    </Box>
-                                     <Box sx={{ width: '20%' }}></Box> {/* Empty cells for alignment */}
-                                     <Box sx={{ width: '20%' }}></Box>
-                                     <Box sx={{ width: '20%' }}></Box>
-                                    <Box sx={{ width: '10%', textAlign: 'right', color: theme.palette.text.secondary }}><ArrowRightIcon fontSize="small"/></Box>
-                                </Box>
-                            </Box>
+                             {/* Render the new DataSourcesTable component */}
+                            <DataSourcesTable
+                                connections={connections}
+                                loading={loading}
+                                error={error}
+                                getDatabaseImageSrc={getDatabaseImageSrc} // Pass necessary functions/data as props
+                                onConnectionClick={handleConnectionRowClick}
+                                theme={theme} // Pass theme if needed for styling within the table
+                            />
                         </Paper>
                     </Grid>
 
-                    {/* Add Connection Card */}
-                    {/* Using Grid item to control width within the flex container */}
-                     <Grid item xs={12} sm={6} md={7} lg={6.5} // Adjust breakpoint widths - wider than Data Sources
-                           sx={{ flexGrow: 1, flexBasis: 'min(500px, 100%)' }} // Use flexBasis for preferred width
-                     >
+                    {/* Add Connection Card - Conditionally render the form component */}
+                     {showAddConnectionForm && ( // Render the form only when showAddConnectionForm is true
+                         <Grid item xs={12} sm={6} md={7} lg={6.5} sx={{ flexGrow: 1, flexBasis: 'min(500px, 100%)' }}>
+                             <Paper sx={{ p: 2, position: 'relative', height: '100%' }}>
+                                  <IconButton aria-label="close" sx={{ position: 'absolute', top: 8, right: 8 }} onClick={handleCloseAddConnectionForm}>
+                                     <CloseIcon />
+                                 </IconButton>
+                                 {/* The title is now inside AddConnectionForm */}
+                                 {/* <Typography variant="h6" mb={2}>Add Connection</Typography> */}
+                                 {/* Render the new AddConnectionForm component */}
+                                 <AddConnectionForm
+                                      onCancel={handleCloseAddConnectionForm} // Pass handlers down
+                                      onTestConnection={handleTestConnection}
+                                      onCreateConnection={handleCreateConnection}
+                                      // Pass other necessary props like database types if needed
+                                 />
+                             </Paper>
+                         </Grid>
+                     )}
+
+
+                    {/* Schema Profiling Card - Use the new component */}
+                    <Grid item xs={12} sm={6} md={7} lg={6.5} sx={{ flexGrow: 1, flexBasis: 'min(500px, 100%)' }}>
                         <Paper sx={{ p: 2, position: 'relative', height: '100%' }}>
-                            <IconButton aria-label="close" sx={{ position: 'absolute', top: 8, right: 8 }}
-                                        onClick={() => handleCloseCard('Add Connection')}>
-                                <CloseIcon />
-                            </IconButton>
-                            <Typography variant="h6" mb={2}>Add Connection</Typography>
-                            <TextField fullWidth label="Connection Name" variant="outlined" margin="normal" size="small"/> {/* Use size="small" for compact forms */}
-                            <FormControl fullWidth margin="normal" size="small">
-                                <InputLabel id="database-type-label">Database Type</InputLabel>
-                                <Select
-                                    labelId="database-type-label"
-                                    id="database-type"
-                                    value=""
-                                    label="Database Type"
-                                >
-                                    <MenuItem value="">Postgres</MenuItem>
-                                    {/* Add other options */}
-                                </Select>
-                            </FormControl>
-                            <Grid container spacing={2} mb={2}>
-                                <Grid item xs={6}>
-                                    <TextField fullWidth label="Sort" variant="outlined" value="5432" size="small"/>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <TextField fullWidth label="5432" variant="outlined" size="small"/>
-                                </Grid>
-                            </Grid>
-                            <Grid container spacing={2} mb={2}>
-                                <Grid item xs={6}>
-                                    <TextField fullWidth label="Host" variant="outlined" value="db.example.com" size="small"/>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <TextField fullWidth label="Database" variant="outlined" value="sales_db" size="small"/>
-                                </Grid>
-                            </Grid>
-                            <TextField fullWidth label="Username" variant="outlined" margin="normal" value="admin" size="small"/>
-                            <TextField fullWidth label="Password" type="password" variant="outlined" margin="normal" value="********" size="small"/>
-                            <TextField fullWidth label="Description" multiline rows={2} variant="outlined" margin="normal" size="small"/>
-                            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                                <Button variant="outlined" size="small" onClick={() => handleButtonClick('Cancel Add Connection')}>Cancel</Button>
-                                <Button variant="contained" size="small" onClick={() => handleButtonClick('Test Connection')}>Test Connection</Button>
-                                <Button variant="contained" size="small" onClick={() => handleButtonClick('Create Connection')}>Create</Button>
-                            </Box>
-                        </Paper>
+                             {/* The close icon is still handled here as it controls the card's visibility */}
+                             {/* The title is now inside SchemaProfilingControls */}
+                             {/* <Typography variant="h6" mb={2}>Schema Profiling</Typography> */}
+                             {/* Render the new SchemaProfilingControls component */}
+                             <SchemaProfilingControls
+                                
+                                 onTestConnection={handleSchemaProfilingTest}
+                                 onTableItemClick={handleSchemaTableClick}
+                                 theme={theme} // Pass theme if needed
+                                 connections={schemaProfilingData.connections} // Pass connections data
+                                 schemas={schemaProfilingData.schemas} // Pass schemas data
+                                 tables={schemaProfilingData.tables} // Pass tables data
+                             />
+                         </Paper>
                     </Grid>
 
-                    {/* Schema Profiling Card */}
-                     {/* Using Grid item to control width within the flex container - similar width to Add Connection */}
-                     <Grid item xs={12} sm={6} md={7} lg={6.5}
-                           sx={{ flexGrow: 1, flexBasis: 'min(500px, 100%)' }} // Use flexBasis for preferred width
-                     >
-                        <Paper sx={{ p: 2, position: 'relative', height: '100%' }}>
-                            <IconButton aria-label="close" sx={{ position: 'absolute', top: 8, right: 8 }}
-                                        onClick={() => handleCloseCard('Schema Profiling')}>
-                                <CloseIcon />
-                            </IconButton>
-                            <Typography variant="h6" mb={2}>Schema Profiling</Typography>
-                            <FormControl fullWidth margin="normal" size="small">
-                                <InputLabel id="database-connection-label">Database Connection</InputLabel>
-                                <Select
-                                    labelId="database-connection-label"
-                                    id="database-connection"
-                                    value="sales_db"
-                                    label="Database Connection"
-                                >
-                                    <MenuItem value="sales_db">Sales DB</MenuItem>
-                                    {/* Add other options */}
-                                </Select>
-                            </FormControl>
-                            <FormControl fullWidth margin="normal" size="small">
-                                <InputLabel id="schema-label">Schema</InputLabel>
-                                <Select
-                                    labelId="schema-label"
-                                    id="schema"
-                                    value="public"
-                                    label="Schema"
-                                >
-                                    <MenuItem value="public">public</MenuItem>
-                                    {/* Add other options */}
-                                </Select>
-                            </FormControl>
-                             {/* Custom layout for schema/table list */}
-                             <Box sx={{ mt: 2 }}>
-                                 {/* Header */}
-                                 <Box sx={{ display: 'flex', borderBottom: `1px solid ${theme.palette.divider}`, pb: 0.5, mb: 0.5, color: theme.palette.text.secondary, fontSize: '0.8rem' }}>
-                                     <Box sx={{ width: '50%', pl: 3 }}>Table Name</Box> {/* Padding to align with icons */}
-                                     <Box sx={{ width: '50%' }}>Columns</Box>
-                                 </Box>
-                                 {/* Items */}
-                                 <Box sx={{ display: 'flex', alignItems: 'center', py: 0.5, borderBottom: `1px solid ${theme.palette.divider}`, cursor: 'pointer' }} onClick={() => handleTableItemClick({ table: 'customers' })}>
-                                     <Box sx={{ width: '50%', display: 'flex', alignItems: 'center' }}>
-                                         <ListItemIcon sx={{ minWidth: 30 }}><ExpandMoreIcon fontSize="small"/></ListItemIcon>
-                                         <Typography variant="body2">customers</Typography>
-                                     </Box>
-                                     <Box sx={{ width: '50%' }}><Typography variant="body2">id, name, email</Typography></Box> {/* Placeholder columns */}
-                                 </Box>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', py: 0.5, borderBottom: `1px solid ${theme.palette.divider}`, cursor: 'pointer' }} onClick={() => handleTableItemClick({ table: 'orders' })}>
-                                     <Box sx={{ width: '50%', display: 'flex', alignItems: 'center' }}>
-                                         <ListItemIcon sx={{ minWidth: 30 }}><ExpandMoreIcon fontSize="small"/></ListItemIcon>
-                                         <Typography variant="body2">orders</Typography>
-                                     </Box>
-                                     <Box sx={{ width: '50%' }}><Typography variant="body2">id, customer_id, order_date</Typography></Box> {/* Placeholder columns */}
-                                 </Box>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', py: 0.5, borderBottom: `1px solid ${theme.palette.divider}`, cursor: 'pointer' }} onClick={() => handleTableItemClick({ table: 'order_items' })}>
-                                     <Box sx={{ width: '50%', display: 'flex', alignItems: 'center' }}>
-                                         <ListItemIcon sx={{ minWidth: 30 }}><ExpandMoreIcon fontSize="small"/></ListItemIcon>
-                                         <Typography variant="body2">order_items</Typography>
-                                     </Box>
-                                     <Box sx={{ width: '50%' }}><Typography variant="body2">order_id, product_id, quantity</Typography></Box> {/* Placeholder columns */}
-                                 </Box>
-                                   <Box sx={{ display: 'flex', alignItems: 'center', py: 0.5, cursor: 'pointer' }} onClick={() => handleTableItemClick({ table: 'products' })}>
-                                     <Box sx={{ width: '50%', display: 'flex', alignItems: 'center' }}>
-                                         <ListItemIcon sx={{ minWidth: 30 }}><ChevronRightIcon fontSize="small"/></ListItemIcon>
-                                         <Typography variant="body2">products</Typography>
-                                     </Box>
-                                     <Box sx={{ width: '50%' }}><Typography variant="body2">id, name, price</Typography></Box> {/* Placeholder columns */}
-                                 </Box>
-                             </Box>
-
-                            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                                <Button variant="outlined" size="small" onClick={() => handleButtonClick('Cancel Schema Profiling')}>Cancel</Button>
-                                <Button variant="contained" size="small" onClick={() => handleButtonClick('Test Connection (Profiling)')}>Test Connection</Button>
-                            </Box>
-                        </Paper>
-                    </Grid>
-
-                    {/* Test Cases Card */}
-                    {/* Using Grid item to control width within the flex container - similar width to Data Sources */}
-                     <Grid item xs={12} sm={6} md={5} lg={4.5}
-                           sx={{ flexGrow: 1, flexBasis: 'min(400px, 100%)' }} // Use flexBasis for preferred width
-                     >
+                    {/* Test Cases Card - Use the new component */}
+                    <Grid item xs={12} sm={6} md={5} lg={4.5} sx={{ flexGrow: 1, flexBasis: 'min(400px, 100%)' }}>
                         <Paper sx={{ p: 2, height: '100%' }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="h6">Test Cases</Typography>
-                                <Button variant="contained" startIcon={<AddIcon />} size="small"
-                                        onClick={() => handleButtonClick('Add Test Case')}
-                                >
+                                <Button variant="contained" startIcon={<AddIcon />} size="small" onClick={handleAddTestCase}>
                                     Add Test Case
                                 </Button>
                             </Box>
-                            <List dense>
-                                {/* Test Case Items */}
-                                <ListItem sx={{ cursor: 'pointer' }} onClick={() => handleListItemClick({ testCase: 'order_items.id Not null' })}>
-                                    <ListItemIcon sx={{ minWidth: 30 }}><CheckCircleOutlineIcon color="success" fontSize="small"/></ListItemIcon> {/* Use theme status color? */}
-                                    <ListItemText
-                                        primary={<Typography variant="body2">order_items.id Not null</Typography>}
-                                        secondary={<Typography variant="caption" color="textSecondary">Table: Sales DB</Typography>}
-                                    />
-                                    <ListItemIcon sx={{ ml: 'auto' }}><ArrowRightIcon fontSize="small"/></ListItemIcon>
-                                </ListItem>
-                                <ListItem sx={{ cursor: 'pointer' }} onClick={() => handleListItemClick({ testCase: 'orders.customer_id Foreign key' })}>
-                                    <ListItemIcon sx={{ minWidth: 30 }}><CheckCircleOutlineIcon color="success" fontSize="small"/></ListItemIcon>
-                                    <ListItemText
-                                        primary={<Typography variant="body2">orders.customer_id Foreign key</Typography>}
-                                        secondary={<Typography variant="caption" color="textSecondary">Table: public</Typography>}
-                                    />
-                                    <ListItemIcon sx={{ ml: 'auto' }}><ArrowRightIcon fontSize="small"/></ListItemIcon>
-                                </ListItem>
-                                <ListItem sx={{ cursor: 'pointer' }} onClick={() => handleListItemClick({ testCase: 'orders.status Expected values' })}>
-                                    <ListItemIcon sx={{ minWidth: 30 }}><CheckCircleOutlineIcon color="success" fontSize="small"/></ListItemIcon>
-                                    <ListItemText
-                                        primary={<Typography variant="body2">orders.status Expected values</Typography>}
-                                        secondary={<Typography variant="caption" color="textSecondary">Table: products</Typography>}
-                                    />
-                                    <ListItemIcon sx={{ ml: 'auto' }}><ArrowRightIcon fontSize="small"/></ListItemIcon>
-                                </ListItem>
-                                <ListItem sx={{ cursor: 'pointer' }} onClick={() => handleListItemClick({ testCase: 'products.id Uniqueness' })}>
-                                    <ListItemIcon sx={{ minWidth: 30 }}><CheckCircleOutlineIcon color="success" fontSize="small"/></ListItemIcon>
-                                    <ListItemText
-                                        primary={<Typography variant="body2">products.id Uniqueness</Typography>}
-                                        secondary={<Typography variant="caption" color="textSecondary">Table: products</Typography>}
-                                    />
-                                    <ListItemIcon sx={{ ml: 'auto' }}><ArrowRightIcon fontSize="small"/></ListItemIcon>
-                                </ListItem>
-                                {/* Add more test cases */}
-                            </List>
+                             {/* Render the new TestCasesList component */}
+                             <TestCasesList
+                                 testCases={testCasesData} // Pass test case data
+                                 onItemClick={handleTestCaseClick} // Pass handlers down
+                                 theme={theme} // Pass theme if needed
+                             />
                         </Paper>
                     </Grid>
-
-                </Box> {/* End of main Flexbox container */}
+                </Box>
             </Box>
         </ThemeProvider>
     );

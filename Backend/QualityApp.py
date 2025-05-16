@@ -27,7 +27,6 @@ from Backend.backend_services import(
     get_table_groups_service,
     get_specific_table_group_service,
     delete_table_group_service,
-    profile_connection_service,
     trigger_profiling_service,
     get_profile_results_by_run_id,
     get_profiling_runs_by_connection,
@@ -96,12 +95,6 @@ def update_connection_route(connection_id: int, conn_data: DBConnectionUpdate, d
 @app.delete("/connections/{connection_id}")
 def delete_connection_route(connection_id: int, db: Session = Depends(get_db)):
     return delete_connection_service(conn_id=connection_id, db=db)
-
-# --- Profiling Endpoint ---
-
-@app.post("/connection/{connection_id}/profiling", response_model=Dict[str, Any]) 
-def profile_connection_route(connection_id: int, conn_data: ConnectionProfilingRequest):
-    return profile_connection_service(conn_id=connection_id, conn_data=conn_data)
 
 # --- Table Group Endpoints ---
 

@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from "react-router-dom";
-import { getAllConnections } from "../api/dbapi"; // adjust path if needed
+import { getAllConnections } from "../../api/dbapi"; // adjust path if needed
 
 const ConnectionsDialog = ({ open, onClose }) => {
     const [connections, setConnections] = useState([]);

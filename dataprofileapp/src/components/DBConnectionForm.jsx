@@ -184,7 +184,7 @@ const DBConnectionForm = ({ initialValues, onSubmit, isEditing, onTestConnection
         // Password is required for creation. For update, it might be optional if not changed.
         // The form requires it here, but the parent component handles sending it only if updated.
         password: Yup.string().required('Password is required'),
-        project_db: Yup.string(), // Database Name is optional in SQL schema
+        project_db: Yup.string().required('Please specify the database'), // Database Name is optional in SQL schema
         // Add validation for other fields if included in initialValues
         // max_threads: Yup.number().integer().min(1).nullable(),
         // ...
@@ -347,7 +347,7 @@ const DBConnectionForm = ({ initialValues, onSubmit, isEditing, onTestConnection
                                 <Field
                                     as={StyledTextField}
                                     name="project_db" // Matches Pydantic/SQL field name
-                                    placeholder="Enter Database Name (if applicable)"
+                                    placeholder="Enter Database Name"
                                     variant="outlined"
                                     fullWidth
                                     disabled={!isEditing}

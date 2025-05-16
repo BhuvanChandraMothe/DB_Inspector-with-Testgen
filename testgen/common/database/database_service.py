@@ -24,6 +24,7 @@ from testgen.common.encrypt import DecryptText
 from testgen.common.read_file import get_template_files
 
 LOG = logging.getLogger("testgen")
+LOG1 = logging.getLogger(__name__)
 
 
 class CConnectParms:
@@ -206,6 +207,7 @@ def _GetDBCredentials(strCredentialSet):
 
 def get_flavor_service(flavor):
     module_path = f"testgen.common.database.flavor.{flavor.lower()}_flavor_service"
+    LOG.info(f"Importing {module_path}")
     class_name = f"{flavor.capitalize()}FlavorService"
     module = importlib.import_module(module_path)
     flavor_class = getattr(module, class_name)

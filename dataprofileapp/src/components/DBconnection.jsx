@@ -208,7 +208,7 @@ const DBConnection = ({ onConnectionSaved }) => {
     project_port: Yup.string().required('Port is required'), // Renamed - Note: Validating as string
     project_user: Yup.string().required('User ID is required'), // Renamed
     password: Yup.string().required('Password is required'),
-    project_db: Yup.string(), // Database Name is optional in SQL schema
+    project_db: Yup.string().required('Please specify the database') // Database Name is optional in SQL schema
   });
 
   const handleTestConnection = async (values) => {
@@ -462,7 +462,7 @@ const DBConnection = ({ onConnectionSaved }) => {
                     id="project_db" // Updated ID
                     name="project_db" // Updated Name
                     variant="outlined"
-                    placeholder='Enter Database Name (if applicable)' // Updated placeholder
+                    placeholder='Enter Database Name' // Updated placeholder
                     fullWidth
                   />
                   <ErrorMessage name="project_db" component={FormHelperText} error /> {/* Updated ErrorMessage name */}

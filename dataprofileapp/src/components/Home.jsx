@@ -23,7 +23,7 @@ import ProfilingResultsTable from "./ProfilingResultsTable"; // Assuming this co
 
 // Import Dialogs
 import NewProfilingRunDialog from "./NewProfilingRUnDialog"; // Assuming this component is available
-import ConnectionsDialog from "./ConnectionDialog"; // Assuming this component is available
+import ConnectionsDialog from "./Home componenets/ConnectionDialog"; // Assuming this component is available
 
 // Import the new chart components from the specified path
 import AnomalySummaryChart from "./Chart Components/AnamolySummaryChart";
